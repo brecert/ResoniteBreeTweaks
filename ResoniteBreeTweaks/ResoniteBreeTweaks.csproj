@@ -1,0 +1,93 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>BreeTweaks</RootNamespace>
+		<AssemblyName>BreeTweaks</AssemblyName>
+		<AssemblyTitle>Bree's Tweaks</AssemblyTitle>
+		<Description>This mod provides various miscellanious tweaks.</Description>
+		<Authors>bree</Authors>
+		<RepositoryUrl>https://github.com/brecert/ResoniteBreeTweaks</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>Resonite,Mod,ResoniteModLoader,Tweaks</PackageTags>
+		<Version>0.0.1.0</Version>
+		<PackageReadmeFile>../README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<Product>$(AssemblyTitle)</Product>
+		<Copyright>Copyright (c) 2025 $(Authors)</Copyright>
+		<PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GenerateDocumentationFile>False</GenerateDocumentationFile>
+		<DelaySign>False</DelaySign>
+		<Title>Bree's Tweaks</Title>
+	</PropertyGroup>
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <ResoniteProjectType>mod</ResoniteProjectType>
+        <ResoniteTarget>client</ResoniteTarget>
+        <ResoniteInstallOnBuild>true</ResoniteInstallOnBuild>
+        <ResonitePath>D:\Program Files (x86)\Steam\steamapps\common\Resonite\</ResonitePath>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>12</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ResoniteReference Include="FrooxEngine" />
+        <ResoniteReference Include="ProtoFlux.Core" />
+        <ResoniteReference Include="ProtoFluxBindings" />
+        <ResoniteReference Include="Elements.Core" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="StrictEmit" Version="2.9.0" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <_ResoniteAssemblyPath>$(ResonitePath)/Resonite_Data/Managed</_ResoniteAssemblyPath>
+        <_ResoniteAssemblyPath Condition="'$(ResoniteTarget)' == 'headless'">$(ResonitePath)</_ResoniteAssemblyPath>
+        <ReferencePath>$(_ResoniteAssemblyPath);$(ReferencePath)</ReferencePath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="@(ResoniteReference)">
+            <Name>%(ResoniteReference.Identity)</Name>
+            <HintPath Condition="'%(HintPath)' == '' And Exists('$(_ResoniteAssemblyPath)/%(Identity).dll')">$(_ResoniteAssemblyPath)/%(Identity).dll</HintPath>
+            <HintPath Condition="'%(HintPath)' == '' And Exists('$(_ResoniteAssemblyPath)/%(Identity).exe')">$(_ResoniteAssemblyPath)/%(Identity).exe</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="ResoniteModLoader">
+        <HintPath>$(ResonitePath)ResoniteModLoader.dll</HintPath>
+        <HintPath>$(ResonitePath)Libraries\ResoniteModLoader.dll</HintPath>
+      </Reference>
+      <Reference Include="HarmonyLib">
+        <HintPath>$(ResonitePath)rml_libs\0Harmony.dll</HintPath>
+        <HintPath Condition="Exists('$(ResonitePath)0Harmony.dll')">$(ResonitePath)0Harmony.dll</HintPath>
+      </Reference>
+      <Reference Include="ResoniteHotReloadLib" Condition="'$(Configuration)'=='Debug'">
+        <HintPath>$(ResonitePath)rml_libs\ResoniteHotReloadLib.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+    </ItemGroup>
+    
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(ResoniteInstallOnBuild)'=='true'">
+        <Message Text="Attempting to copy $(TargetFileName) to $(ResonitePath)rml_mods" Importance="high" />
+        <Copy SourceFiles="$(TargetDir)$(TargetFileName)" DestinationFolder="$(ResonitePath)rml_mods" ContinueOnError="true" />
+    </Target>
+	<Target Name="PostBuildHotReload" AfterTargets="PostBuildEvent" Condition="'$(ResoniteInstallOnBuild)'=='true' and '$(Configuration)'=='Debug'">
+		<Message Text="Attempting to copy $(TargetFileName) to $(ResonitePath)rml_mods\HotReloadMods" Importance="high" />
+		<Copy SourceFiles="$(TargetDir)$(TargetFileName)" DestinationFolder="$(ResonitePath)rml_mods\HotReloadMods" ContinueOnError="true" />
+	</Target>
+
+</Project>
