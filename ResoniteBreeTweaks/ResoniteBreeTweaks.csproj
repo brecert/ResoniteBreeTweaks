@@ -9,7 +9,7 @@
 		<RepositoryUrl>https://github.com/brecert/ResoniteBreeTweaks</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>Resonite,Mod,ResoniteModLoader,Tweaks</PackageTags>
-		<Version>0.0.1.0</Version>
+		<Version>0.0.2.0</Version>
 		<PackageReadmeFile>../README.md</PackageReadmeFile>
 	</PropertyGroup>
 
@@ -45,6 +45,7 @@
         <ResoniteReference Include="FrooxEngine" />
         <ResoniteReference Include="ProtoFlux.Core" />
         <ResoniteReference Include="ProtoFluxBindings" />
+        <ResoniteReference Include="ProtoFlux.Nodes.FrooxEngine" />
         <ResoniteReference Include="Elements.Core" />
     </ItemGroup>
 
