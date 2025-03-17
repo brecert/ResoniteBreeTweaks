@@ -12,6 +12,7 @@ using System.Linq;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Constants;
+using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Operators;
 
 namespace BreeTweaks.Patches;
 
@@ -54,7 +55,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                                 {
                                     __instance.SpawnNode(item.node, n =>
                                     {
-                                        var output = n.NodeOutputs.First(o => o.MappedOutput.OutputType == inputProxy.InputType);
+                                        var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
                                         inputProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
                                         __instance.LocalUser.CloseContextMenu(__instance);
                                         CleanupDraggedWire(__instance);
@@ -73,7 +74,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                                 {
                                     __instance.SpawnNode(item.node, n =>
                                     {
-                                        var input = n.NodeInputs.First(i => i.TargetType == typeof(INodeValueOutput<>).MakeGenericType(outputProxy.OutputType));
+                                        var input = n.NodeInputs.First(i => typeof(INodeOutput<>).MakeGenericType(outputProxy.OutputType).IsAssignableFrom(i.TargetType));
                                         n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
                                         __instance.LocalUser.CloseContextMenu(__instance);
                                         CleanupDraggedWire(__instance);
@@ -87,7 +88,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                             foreach (var item in items)
                             {
                                 var label = item.node.Name.AsLocaleKey();
-                                var menuItem = menu.AddItem(in label, (Uri?)null, impulseProxy.ElementContentType.GetTypeColor());
+                                var menuItem = menu.AddItem(in label, (Uri?)null, item.node.GetTypeColor());
                                 menuItem.Button.LocalPressed += (button, data) =>
                                 {
                                     __instance.SpawnNode(item.node, n =>
@@ -124,6 +125,15 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                 yield return new MenuItem(typeof(HostUser));
                 yield return new MenuItem(typeof(UserFromUsername));
             }
+
+            else if (inputProxy.InputType.Value == typeof(bool))
+            {
+                yield return new MenuItem(typeof(ValueLessThan<dummy>));
+                yield return new MenuItem(typeof(ValueLessOrEqual<dummy>));
+                yield return new MenuItem(typeof(ValueGreaterThan<dummy>));
+                yield return new MenuItem(typeof(ValueGreaterOrEqual<dummy>));
+                yield return new MenuItem(typeof(ValueEquals<dummy>));
+            }
         }
 
         else if (target is ProtoFluxOutputProxy outputProxy)
@@ -138,6 +148,9 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             {
                 yield return new MenuItem(typeof(If));
                 yield return new MenuItem(typeof(ValueConditional<dummy>));
+                yield return new MenuItem(typeof(AND_Bool));
+                yield return new MenuItem(typeof(OR_Bool));
+                yield return new MenuItem(typeof(NOT_Bool));
             }
         }
 
