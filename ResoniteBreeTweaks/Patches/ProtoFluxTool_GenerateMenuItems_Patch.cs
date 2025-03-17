@@ -14,6 +14,7 @@ using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Constants;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Operators;
 using ProtoFlux.Core;
+using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Quaternions;
 
 namespace BreeTweaks.Patches;
 
@@ -162,6 +163,16 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                     yield return new MenuItem(typeof(ValueEquals<>).MakeGenericType(inputType));
                     break;
                 }
+            case ProtoFluxOutputProxy { OutputType.Value: var valueType } when valueType == typeof(floatQ):
+                {
+                    yield return new MenuItem(typeof(InverseRotation_floatQ));
+                    yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(valueType));
+                    yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(valueType));
+                    yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(valueType));
+                    yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(valueType));
+                    break;
+                }
+
         }
         // if (target is ProtoFluxInputProxy { InputType.Value: var type } when type == typeof(float) or ProtoFluxOutputProxy { OutputType.Value: var type } ) {
 
