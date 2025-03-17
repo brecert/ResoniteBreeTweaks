@@ -13,6 +13,7 @@ using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Constants;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Operators;
+using ProtoFlux.Core;
 
 namespace BreeTweaks.Patches;
 
@@ -42,6 +43,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             __instance.StartTask(async () =>
             {
                 var menu = await __instance.LocalUser.OpenContextMenu(__instance, __instance.Slot);
+                Traverse.Create(menu).Field<float?>("_speedOverride").Value = 10;
 
                 switch (elementProxy)
                 {
@@ -112,10 +114,58 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
         return true;
     }
 
+    // note: if we can build up a graph then we can egraph reduce to make matches like this easier to spot automatically rather than needing to check each one manually
+    // todo: detect add + 1 and offer to convert to inc?
+    // todo: detect add + 1 or inc and write and offer to convert to increment?
+
     internal static IEnumerable<MenuItem> MenuItems(ProtoFluxTool __instance)
     {
         var _currentProxy = Traverse.Create(__instance).Field("_currentProxy").GetValue<SyncRef<ProtoFluxElementProxy>>();
         var target = _currentProxy?.Target;
+
+        switch (target)
+        {
+            case ProtoFluxInputProxy { InputType.Value: var inputType }
+                when inputType == typeof(float)
+                  || inputType == typeof(double)
+                  || typeof(IVector<float>).IsAssignableFrom(inputType)
+                  || typeof(IVector<double>).IsAssignableFrom(inputType):
+                {
+                    yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(inputType));
+                    break;
+                }
+            case ProtoFluxOutputProxy { OutputType.Value: var inputType }
+                // todo: more robust through coder / generic checking
+                when inputType == typeof(float)
+                  || inputType == typeof(double)
+                  || inputType == typeof(int)
+                  || inputType == typeof(long)
+                  || typeof(IVector<float>).IsAssignableFrom(inputType)
+                  || typeof(IVector<double>).IsAssignableFrom(inputType)
+                  || typeof(IVector<int>).IsAssignableFrom(inputType)
+                  || typeof(IVector<long>).IsAssignableFrom(inputType):
+                {
+                    // core
+                    yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(inputType));
+                    // this may be a bit much?
+                    // todo: investigate if contextual hovered actions works
+                    yield return new MenuItem(typeof(ValueLessThan<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueLessOrEqual<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueGreaterThan<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueGreaterOrEqual<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueEquals<>).MakeGenericType(inputType));
+                    break;
+                }
+        }
+        // if (target is ProtoFluxInputProxy { InputType.Value: var type } when type == typeof(float) or ProtoFluxOutputProxy { OutputType.Value: var type } ) {
+
+        // }
 
         if (target is ProtoFluxInputProxy inputProxy)
         {
@@ -148,6 +198,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             {
                 yield return new MenuItem(typeof(If));
                 yield return new MenuItem(typeof(ValueConditional<dummy>));
+                // todo: convert to multi?
                 yield return new MenuItem(typeof(AND_Bool));
                 yield return new MenuItem(typeof(OR_Bool));
                 yield return new MenuItem(typeof(NOT_Bool));
@@ -156,6 +207,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
 
         else if (target is ProtoFluxImpulseProxy)
         {
+            // TODO: convert to while?
             yield return new MenuItem(typeof(For));
             yield return new MenuItem(typeof(If));
             yield return new MenuItem(typeof(ValueWrite<dummy>));
