@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
 using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes;
+using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Constants;
 
 namespace BreeTweaks.Patches;
 
@@ -53,7 +54,8 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                                 {
                                     __instance.SpawnNode(item.node, n =>
                                     {
-                                        inputProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, n.GetOutput(0), allowExplicitCast: false, undoable: true);
+                                        var output = n.NodeOutputs.First(o => o.MappedOutput.OutputType == inputProxy.InputType);
+                                        inputProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
                                         __instance.LocalUser.CloseContextMenu(__instance);
                                         CleanupDraggedWire(__instance);
                                     });
@@ -71,7 +73,8 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                                 {
                                     __instance.SpawnNode(item.node, n =>
                                     {
-                                        n.TryConnectInput(n.GetInput(0), outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
+                                        var input = n.NodeInputs.First(i => i.TargetType == typeof(INodeValueOutput<>).MakeGenericType(outputProxy.OutputType));
+                                        n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
                                         __instance.LocalUser.CloseContextMenu(__instance);
                                         CleanupDraggedWire(__instance);
                                     });
@@ -123,16 +126,22 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             }
         }
 
-        if (target is ProtoFluxOutputProxy outputProxy)
+        else if (target is ProtoFluxOutputProxy outputProxy)
         {
             if (outputProxy.OutputType.Value == typeof(Slot))
             {
                 yield return new MenuItem(typeof(GlobalTransform));
                 yield return new MenuItem(typeof(GetForward));
             }
+
+            else if (outputProxy.OutputType.Value == typeof(bool))
+            {
+                yield return new MenuItem(typeof(If));
+                yield return new MenuItem(typeof(ValueConditional<dummy>));
+            }
         }
 
-        if (target is ProtoFluxImpulseProxy)
+        else if (target is ProtoFluxImpulseProxy)
         {
             yield return new MenuItem(typeof(For));
             yield return new MenuItem(typeof(If));
@@ -140,7 +149,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             yield return new MenuItem(typeof(Sequence));
         }
 
-        if (target is ProtoFluxOperationProxy)
+        else if (target is ProtoFluxOperationProxy)
         {
 
         }
