@@ -18,11 +18,18 @@ internal static class DatatypeColorHelper_GetTypeColor_Patch
 {
   internal static bool Prefix(Type type, ref colorX __result)
   {
-    if (type == typeof(dummy))
+    if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(dummy<>))
     {
-      __result = RadiantUI_Constants.Neutrals.LIGHT.ConstructHDR(0.5f);
+      __result = colorX.AdditiveBlend(colorX.White, type.GenericTypeArguments[0].GetTypeColor().MulSaturation(0.675f)).NormalizeHDR(out _);
       return false;
     }
+
+    if (type == typeof(dummy))
+    {
+      __result = colorX.White;
+      return false;
+    }
+
     return true;
   }
 }
