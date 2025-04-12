@@ -9,12 +9,12 @@ using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Users;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Linq;
-using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
-using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes;
-using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Constants;
-using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Operators;
 using ProtoFlux.Core;
-using FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Math.Quaternions;
+using ProtoFlux.Runtimes.Execution.Nodes;
+using ProtoFlux.Runtimes.Execution.Nodes.Operators;
+using ProtoFlux.Runtimes.Execution.Nodes.Math.Quaternions;
+using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
+using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Slots;
 
 namespace BreeTweaks.Patches;
 
@@ -52,11 +52,13 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                         {
                             foreach (var item in items)
                             {
-                                var label = item.node.Name.AsLocaleKey();
+                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
+                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
                                 var menuItem = menu.AddItem(in label, (Uri?)null, inputProxy.InputType.Value.GetTypeColor());
                                 menuItem.Button.LocalPressed += (button, data) =>
                                 {
-                                    __instance.SpawnNode(item.node, n =>
+                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
+                                    __instance.SpawnNode(nodeBinding, n =>
                                     {
                                         var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
                                         inputProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
@@ -71,11 +73,13 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                         {
                             foreach (var item in items)
                             {
-                                var label = item.node.Name.AsLocaleKey();
+                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
+                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
                                 var menuItem = menu.AddItem(in label, (Uri?)null, outputProxy.OutputType.Value.GetTypeColor());
                                 menuItem.Button.LocalPressed += (button, data) =>
                                 {
-                                    __instance.SpawnNode(item.node, n =>
+                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
+                                    __instance.SpawnNode(nodeBinding, n =>
                                     {
                                         var input = n.NodeInputs.First(i => typeof(INodeOutput<>).MakeGenericType(outputProxy.OutputType).IsAssignableFrom(i.TargetType));
                                         n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
@@ -90,11 +94,13 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                         {
                             foreach (var item in items)
                             {
-                                var label = item.node.Name.AsLocaleKey();
+                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
+                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
                                 var menuItem = menu.AddItem(in label, (Uri?)null, item.node.GetTypeColor());
                                 menuItem.Button.LocalPressed += (button, data) =>
                                 {
-                                    __instance.SpawnNode(item.node, n =>
+                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
+                                    __instance.SpawnNode(nodeBinding, n =>
                                     {
                                         n.TryConnectImpulse(impulseProxy.NodeImpulse.Target, n.GetOperation(0), undoable: true);
                                         __instance.LocalUser.CloseContextMenu(__instance);
@@ -163,9 +169,10 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
                     yield return new MenuItem(typeof(ValueEquals<>).MakeGenericType(inputType));
                     break;
                 }
-            case ProtoFluxOutputProxy { OutputType.Value: var valueType } when valueType == typeof(floatQ):
+            case ProtoFluxOutputProxy { OutputType.Value: var valueType } when typeof(IQuaternion).IsAssignableFrom(valueType):
                 {
-                    yield return new MenuItem(typeof(InverseRotation_floatQ));
+                    if (valueType == typeof(floatQ)) yield return new MenuItem(typeof(InverseRotation_floatQ));
+                    if (valueType == typeof(doubleQ)) yield return new MenuItem(typeof(InverseRotation_doubleQ));
                     yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(valueType));
                     yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(valueType));
                     yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(valueType));
@@ -203,6 +210,7 @@ internal static class ProtoFluxTool_GenerateMenuItems_Patch
             {
                 yield return new MenuItem(typeof(GlobalTransform));
                 yield return new MenuItem(typeof(GetForward));
+                yield return new MenuItem(typeof(GetChild));
             }
 
             else if (outputProxy.OutputType.Value == typeof(bool))

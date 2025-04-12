@@ -44,8 +44,9 @@
     <ItemGroup>
         <ResoniteReference Include="FrooxEngine" />
         <ResoniteReference Include="ProtoFlux.Core" />
-        <ResoniteReference Include="ProtoFluxBindings" />
+        <ResoniteReference Include="ProtoFlux.Nodes.Core" />
         <ResoniteReference Include="ProtoFlux.Nodes.FrooxEngine" />
+        <ResoniteReference Include="ProtoFluxBindings" />
         <ResoniteReference Include="Elements.Core" />
     </ItemGroup>
 
