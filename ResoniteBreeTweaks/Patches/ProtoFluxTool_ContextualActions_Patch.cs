@@ -15,6 +15,7 @@ using ProtoFlux.Runtimes.Execution.Nodes.Math.Quaternions;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Slots;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Users;
+using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Async;
 
 namespace BreeTweaks.Patches;
 
@@ -52,20 +53,11 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                         {
                             foreach (var item in items)
                             {
-                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
-                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
-                                var menuItem = menu.AddItem(in label, (Uri?)null, inputProxy.InputType.Value.GetTypeColor());
-                                menuItem.Button.LocalPressed += (button, data) =>
+                                AddMenuItem(__instance, menu, inputProxy.InputType.Value.GetTypeColor(), item, n =>
                                 {
-                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
-                                    __instance.SpawnNode(nodeBinding, n =>
-                                    {
-                                        var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
-                                        inputProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
-                                        __instance.LocalUser.CloseContextMenu(__instance);
-                                        CleanupDraggedWire(__instance);
-                                    });
-                                };
+                                    var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
+                                    elementProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
+                                });
                             }
                             break;
                         }
@@ -73,20 +65,11 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                         {
                             foreach (var item in items)
                             {
-                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
-                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
-                                var menuItem = menu.AddItem(in label, (Uri?)null, outputProxy.OutputType.Value.GetTypeColor());
-                                menuItem.Button.LocalPressed += (button, data) =>
+                                AddMenuItem(__instance, menu, outputProxy.OutputType.Value.GetTypeColor(), item, n =>
                                 {
-                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
-                                    __instance.SpawnNode(nodeBinding, n =>
-                                    {
-                                        var input = n.NodeInputs.First(i => typeof(INodeOutput<>).MakeGenericType(outputProxy.OutputType).IsAssignableFrom(i.TargetType));
-                                        n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
-                                        __instance.LocalUser.CloseContextMenu(__instance);
-                                        CleanupDraggedWire(__instance);
-                                    });
-                                };
+                                    var input = n.NodeInputs.First(i => typeof(INodeOutput<>).MakeGenericType(outputProxy.OutputType).IsAssignableFrom(i.TargetType));
+                                    n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
+                                });
                             }
                             break;
                         }
@@ -94,19 +77,22 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                         {
                             foreach (var item in items)
                             {
-                                var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
-                                var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
-                                var menuItem = menu.AddItem(in label, (Uri?)null, item.node.GetTypeColor());
-                                menuItem.Button.LocalPressed += (button, data) =>
+                                // the colors should almost always be the same so unique colors are more important maybe?
+                                AddMenuItem(__instance, menu, item.node.GetTypeColor(), item, n =>
                                 {
-                                    var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
-                                    __instance.SpawnNode(nodeBinding, n =>
-                                    {
-                                        n.TryConnectImpulse(impulseProxy.NodeImpulse.Target, n.GetOperation(0), undoable: true);
-                                        __instance.LocalUser.CloseContextMenu(__instance);
-                                        CleanupDraggedWire(__instance);
-                                    });
-                                };
+                                    n.TryConnectImpulse(impulseProxy.NodeImpulse.Target, n.GetOperation(0), undoable: true);
+                                });
+                            }
+                            break;
+                        }
+                    case ProtoFluxOperationProxy operationProxy:
+                        {
+                            foreach (var item in items)
+                            {
+                                AddMenuItem(__instance, menu, item.node.GetTypeColor(), item, n =>
+                                {
+                                    n.TryConnectImpulse(n.GetImpulse(0), operationProxy.NodeOperation.Target, undoable: true);
+                                });
                             }
                             break;
                         }
@@ -119,6 +105,23 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         }
 
         return true;
+    }
+
+    private static void AddMenuItem(ProtoFluxTool __instance, ContextMenu menu, colorX color, MenuItem item, Action<ProtoFluxNode> setup)
+    {
+        var nodeMetadata = NodeMetadataHelper.GetMetadata(item.node);
+        var label = (LocaleString)(nodeMetadata.Name ?? item.node.GetNiceTypeName());
+        var menuItem = menu.AddItem(in label, (Uri?)null, color);
+        menuItem.Button.LocalPressed += (button, data) =>
+        {
+            var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
+            __instance.SpawnNode(nodeBinding, n =>
+            {
+                setup(n);
+                __instance.LocalUser.CloseContextMenu(__instance);
+                CleanupDraggedWire(__instance);
+            });
+        };
     }
 
     // note: if we can build up a graph then we can egraph reduce to make matches like this easier to spot automatically rather than needing to check each one manually
@@ -231,18 +234,30 @@ internal static class ProtoFluxTool_ContextualActions_Patch
             }
         }
 
-        else if (target is ProtoFluxImpulseProxy)
+        else if (target is ProtoFluxImpulseProxy impulseProxy)
         {
             // TODO: convert to while?
             yield return new MenuItem(typeof(For));
             yield return new MenuItem(typeof(If));
             yield return new MenuItem(typeof(ValueWrite<dummy>));
             yield return new MenuItem(typeof(Sequence));
+
+            switch (impulseProxy.ImpulseType.Value)
+            {
+                case ImpulseType.AsyncCall:
+                case ImpulseType.AsyncResumption:
+                    yield return new MenuItem(typeof(AsyncFor));
+                    yield return new MenuItem(typeof(AsyncSequence));
+                    break;
+            }
         }
 
-        else if (target is ProtoFluxOperationProxy)
+        else if (target is ProtoFluxOperationProxy operationProxy)
         {
-
+            if (operationProxy.IsAsync)
+            {
+                yield return new MenuItem(typeof(StartAsyncTask));
+            }
         }
     }
 
