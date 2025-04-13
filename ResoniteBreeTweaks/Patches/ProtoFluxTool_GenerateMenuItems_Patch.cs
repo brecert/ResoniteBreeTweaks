@@ -11,7 +11,7 @@ using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 
-[HarmonyPatchCategory("ProtoFluxTool Dynvar Additions"), TweakCategory("Aal.")]
+[HarmonyPatchCategory("ProtoFluxTool DynamicVariableInput Creation"), TweakCategory("Adds a context menu item to create DynamicVariableInputs when holding a dynamic variable component with the ProtoFlux tool.")]
 [HarmonyPatch(typeof(ProtoFluxTool), nameof(ProtoFluxTool.GenerateMenuItems))]
 internal static class ProtoFluxTool_GenerateMenuItems_Patch
 {
