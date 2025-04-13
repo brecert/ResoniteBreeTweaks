@@ -194,6 +194,13 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                 yield return new MenuItem(typeof(UserFromUsername));
             }
 
+            else if (inputProxy.InputType.Value == typeof(UserRoot))
+            {
+                yield return new MenuItem(typeof(GetActiveUserRoot));
+                yield return new MenuItem(typeof(LocalUserRoot));
+                yield return new MenuItem(typeof(UserUserRoot));
+            }
+
             else if (inputProxy.InputType.Value == typeof(bool))
             {
                 yield return new MenuItem(typeof(ValueLessThan<dummy>));
