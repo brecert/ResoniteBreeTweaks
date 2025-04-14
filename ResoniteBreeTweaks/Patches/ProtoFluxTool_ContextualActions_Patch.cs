@@ -24,9 +24,10 @@ namespace BreeTweaks.Patches;
 internal static class ProtoFluxTool_ContextualActions_Patch
 {
 
-    internal readonly struct MenuItem(Type node)
+    internal readonly struct MenuItem(Type node, Type? binding = null)
     {
         internal readonly Type node = node;
+        internal readonly Type? binding = binding;
     }
 
     internal static bool Prefix(ProtoFluxTool __instance, SyncRef<ProtoFluxElementProxy> ____currentProxy)
@@ -114,7 +115,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         var menuItem = menu.AddItem(in label, (Uri?)null, color);
         menuItem.Button.LocalPressed += (button, data) =>
         {
-            var nodeBinding = ProtoFluxHelper.GetBindingForNode(item.node);
+            var nodeBinding = item.binding ?? ProtoFluxHelper.GetBindingForNode(item.node);
             __instance.SpawnNode(nodeBinding, n =>
             {
                 setup(n);
@@ -147,29 +148,29 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                     yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(inputType));
                     break;
                 }
-            case ProtoFluxOutputProxy { OutputType.Value: var inputType }
+            case ProtoFluxOutputProxy { OutputType.Value: var outputType }
                 // todo: more robust through coder / generic checking
-                when inputType == typeof(float)
-                  || inputType == typeof(double)
-                  || inputType == typeof(int)
-                  || inputType == typeof(long)
-                  || typeof(IVector<float>).IsAssignableFrom(inputType)
-                  || typeof(IVector<double>).IsAssignableFrom(inputType)
-                  || typeof(IVector<int>).IsAssignableFrom(inputType)
-                  || typeof(IVector<long>).IsAssignableFrom(inputType):
+                when outputType == typeof(float)
+                  || outputType == typeof(double)
+                  || outputType == typeof(int)
+                  || outputType == typeof(long)
+                  || typeof(IVector<float>).IsAssignableFrom(outputType)
+                  || typeof(IVector<double>).IsAssignableFrom(outputType)
+                  || typeof(IVector<int>).IsAssignableFrom(outputType)
+                  || typeof(IVector<long>).IsAssignableFrom(outputType):
                 {
                     // core
-                    yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueAdd<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueSub<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueMul<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueDiv<>).MakeGenericType(outputType));
                     // this may be a bit much?
                     // todo: investigate if contextual hovered actions works
-                    yield return new MenuItem(typeof(ValueLessThan<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueLessOrEqual<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueGreaterThan<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueGreaterOrEqual<>).MakeGenericType(inputType));
-                    yield return new MenuItem(typeof(ValueEquals<>).MakeGenericType(inputType));
+                    yield return new MenuItem(typeof(ValueLessThan<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueLessOrEqual<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueGreaterThan<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueGreaterOrEqual<>).MakeGenericType(outputType));
+                    yield return new MenuItem(typeof(ValueEquals<>).MakeGenericType(outputType));
                     break;
                 }
             case ProtoFluxOutputProxy { OutputType.Value: var valueType } when typeof(IQuaternion).IsAssignableFrom(valueType):
@@ -190,6 +191,11 @@ internal static class ProtoFluxTool_ContextualActions_Patch
 
         if (target is ProtoFluxInputProxy inputProxy)
         {
+            if (TryGetPackNode(inputProxy.InputType, out var packNodeType))
+            {
+                yield return new MenuItem(packNodeType);
+            }
+
             if (inputProxy.InputType.Value == typeof(User))
             {
                 yield return new MenuItem(typeof(LocalUser));
@@ -206,16 +212,21 @@ internal static class ProtoFluxTool_ContextualActions_Patch
 
             else if (inputProxy.InputType.Value == typeof(bool))
             {
-                yield return new MenuItem(typeof(ValueLessThan<dummy>));
-                yield return new MenuItem(typeof(ValueLessOrEqual<dummy>));
-                yield return new MenuItem(typeof(ValueGreaterThan<dummy>));
-                yield return new MenuItem(typeof(ValueGreaterOrEqual<dummy>));
-                yield return new MenuItem(typeof(ValueEquals<dummy>));
+                yield return new MenuItem(typeof(ValueLessThan<int>));
+                yield return new MenuItem(typeof(ValueLessOrEqual<int>));
+                yield return new MenuItem(typeof(ValueGreaterThan<int>));
+                yield return new MenuItem(typeof(ValueGreaterOrEqual<int>));
+                yield return new MenuItem(typeof(ValueEquals<int>));
             }
         }
 
         else if (target is ProtoFluxOutputProxy outputProxy)
         {
+            if (TryGetUnpackNode(outputProxy.OutputType, out var unpackNodeType))
+            {
+                yield return new MenuItem(unpackNodeType);
+            }
+
             if (outputProxy.OutputType.Value == typeof(Slot))
             {
                 yield return new MenuItem(typeof(GlobalTransform));
@@ -226,7 +237,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
             else if (outputProxy.OutputType.Value == typeof(bool))
             {
                 yield return new MenuItem(typeof(If));
-                yield return new MenuItem(typeof(ValueConditional<dummy>));
+                yield return new MenuItem(typeof(ValueConditional<int>)); // dummy type when
                 // todo: convert to multi?
                 yield return new MenuItem(typeof(AND_Bool));
                 yield return new MenuItem(typeof(OR_Bool));
@@ -261,6 +272,69 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         }
     }
 
+    internal static readonly Dictionary<Type, Type> UnpackNodeMapping = new() {
+        {typeof(bool2), typeof(Unpack_Bool2)},
+        {typeof(bool3), typeof(Unpack_Bool3)},
+        {typeof(bool4), typeof(Unpack_Bool4)},
+
+        {typeof(int2), typeof(Unpack_Int2)},
+        {typeof(int3), typeof(Unpack_Int3)},
+        {typeof(int4), typeof(Unpack_Int4)},
+
+        {typeof(long2), typeof(Unpack_Long2)},
+        {typeof(long3), typeof(Unpack_Long3)},
+        {typeof(long4), typeof(Unpack_Long4)},
+
+        {typeof(uint2), typeof(Unpack_Uint2)},
+        {typeof(uint3), typeof(Unpack_Uint3)},
+        {typeof(uint4), typeof(Unpack_Uint4)},
+
+        {typeof(ulong2), typeof(Unpack_Ulong2)},
+        {typeof(ulong3), typeof(Unpack_Ulong3)},
+        {typeof(ulong4), typeof(Unpack_Ulong4)},
+
+        {typeof(float2), typeof(Unpack_Float2)},
+        {typeof(float3), typeof(Unpack_Float3)},
+        {typeof(float4), typeof(Unpack_Float4)},
+
+        {typeof(double2), typeof(Unpack_Double2)},
+        {typeof(double3), typeof(Unpack_Double3)},
+        {typeof(double4), typeof(Unpack_Double4)},
+    };
+
+    internal static bool TryGetUnpackNode(Type nodeType, out Type value) => UnpackNodeMapping.TryGetValue(nodeType, out value);
+
+    internal static readonly Dictionary<Type, Type> PackNodeMapping = new() {
+        {typeof(bool2), typeof(Pack_Bool2)},
+        {typeof(bool3), typeof(Pack_Bool3)},
+        {typeof(bool4), typeof(Pack_Bool4)},
+
+        {typeof(int2), typeof(Pack_Int2)},
+        {typeof(int3), typeof(Pack_Int3)},
+        {typeof(int4), typeof(Pack_Int4)},
+
+        {typeof(long2), typeof(Pack_Long2)},
+        {typeof(long3), typeof(Pack_Long3)},
+        {typeof(long4), typeof(Pack_Long4)},
+
+        {typeof(uint2), typeof(Pack_Uint2)},
+        {typeof(uint3), typeof(Pack_Uint3)},
+        {typeof(uint4), typeof(Pack_Uint4)},
+
+        {typeof(ulong2), typeof(Pack_Ulong2)},
+        {typeof(ulong3), typeof(Pack_Ulong3)},
+        {typeof(ulong4), typeof(Pack_Ulong4)},
+
+        {typeof(float2), typeof(Pack_Float2)},
+        {typeof(float3), typeof(Pack_Float3)},
+        {typeof(float4), typeof(Pack_Float4)},
+
+        {typeof(double2), typeof(Pack_Double2)},
+        {typeof(double3), typeof(Pack_Double3)},
+        {typeof(double4), typeof(Pack_Double4)},
+    };
+
+    internal static bool TryGetPackNode(Type nodeType, out Type value) => PackNodeMapping.TryGetValue(nodeType, out value);
 
     [HarmonyReversePatch]
     [HarmonyPatch(typeof(ProtoFluxTool), "CleanupDraggedWire")]
@@ -272,4 +346,9 @@ internal static class ProtoFluxTool_ContextualActions_Patch
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void OnSecondaryPress(ProtoFluxTool instance) => throw new NotImplementedException();
 
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(ProtoFluxHelper), "GetNodeForType")]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static Type GetNodeForType(Type type, List<NodeTypeRecord> list) => throw new NotImplementedException();
 }
