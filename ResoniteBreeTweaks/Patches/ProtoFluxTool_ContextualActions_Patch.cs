@@ -16,6 +16,8 @@ using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Transform;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Slots;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Users;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Async;
+using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Audio;
+using SharpPipe;
 
 namespace BreeTweaks.Patches;
 
@@ -34,6 +36,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
     {
         var elementProxy = ____currentProxy.Target;
         var items = MenuItems(__instance).Take(10).ToArray();
+
 
         if (items.Length != 0)
         {
@@ -191,7 +194,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
 
         if (target is ProtoFluxInputProxy inputProxy)
         {
-            if (TryGetPackNode(inputProxy.InputType, out var packNodeType))
+            if (TryGetPackNode(inputProxy.InputType.Value, out var packNodeType))
             {
                 yield return new MenuItem(packNodeType);
             }
@@ -302,7 +305,23 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         {typeof(double4), typeof(Unpack_Double4)},
     };
 
-    internal static bool TryGetUnpackNode(Type nodeType, out Type value) => UnpackNodeMapping.TryGetValue(nodeType, out value);
+    internal static bool TryGetUnpackNode(Type nodeType, out Type? value)
+    {
+        if (ReflectionHelper.IsNullable(nodeType) && Nullable.GetUnderlyingType(nodeType).IsUnmanaged())
+        {
+            try
+            {
+                value = typeof(UnpackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType));
+                return true;
+            }
+            catch
+            {
+                value = null;
+                return false;
+            }
+        }
+        return UnpackNodeMapping.TryGetValue(nodeType, out value);
+    }
 
     internal static readonly Dictionary<Type, Type> PackNodeMapping = new() {
         {typeof(bool2), typeof(Pack_Bool2)},
@@ -332,9 +351,27 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         {typeof(double2), typeof(Pack_Double2)},
         {typeof(double3), typeof(Pack_Double3)},
         {typeof(double4), typeof(Pack_Double4)},
+
+        {typeof(ZitaParameters), typeof(ConstructZitaParameters)},
     };
 
-    internal static bool TryGetPackNode(Type nodeType, out Type value) => PackNodeMapping.TryGetValue(nodeType, out value);
+    internal static bool TryGetPackNode(Type nodeType, out Type value)
+    {
+        if (ReflectionHelper.IsNullable(nodeType) && Nullable.GetUnderlyingType(nodeType).IsUnmanaged())
+        {
+            try
+            {
+                value = typeof(PackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType));
+                return true;
+            }
+            catch
+            {
+                value = null;
+                return false;
+            }
+        }
+        return PackNodeMapping.TryGetValue(nodeType, out value);
+    }
 
     [HarmonyReversePatch]
     [HarmonyPatch(typeof(ProtoFluxTool), "CleanupDraggedWire")]
