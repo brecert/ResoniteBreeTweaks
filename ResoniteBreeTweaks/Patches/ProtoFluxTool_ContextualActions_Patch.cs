@@ -18,6 +18,7 @@ using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Users;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Async;
 using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Audio;
 using SharpPipe;
+using ProtoFlux.Runtimes.Execution.Nodes.TimeAndDate;
 
 namespace BreeTweaks.Patches;
 
@@ -194,9 +195,12 @@ internal static class ProtoFluxTool_ContextualActions_Patch
 
         if (target is ProtoFluxInputProxy inputProxy)
         {
-            if (TryGetPackNode(inputProxy.InputType.Value, out var packNodeType))
+            if (TryGetPackNode(inputProxy.InputType.Value, out var packNodeTypes))
             {
-                yield return new MenuItem(packNodeType);
+                foreach (var packNodeType in packNodeTypes)
+                {
+                    yield return new MenuItem(packNodeType);
+                }
             }
 
             if (inputProxy.InputType.Value == typeof(User))
@@ -221,13 +225,22 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                 yield return new MenuItem(typeof(ValueGreaterOrEqual<int>));
                 yield return new MenuItem(typeof(ValueEquals<int>));
             }
+
+            else if (inputProxy.InputType.Value == typeof(DateTime))
+            {
+                yield return new MenuItem(typeof(UtcNow));
+                yield return new MenuItem(typeof(FromUnixMilliseconds));
+            }
         }
 
         else if (target is ProtoFluxOutputProxy outputProxy)
         {
-            if (TryGetUnpackNode(outputProxy.OutputType, out var unpackNodeType))
+            if (TryGetUnpackNode(outputProxy.OutputType, out var unpackNodeTypes))
             {
-                yield return new MenuItem(unpackNodeType);
+                foreach (var nodeType in unpackNodeTypes)
+                {
+                    yield return new MenuItem(nodeType);
+                }
             }
 
             if (outputProxy.OutputType.Value == typeof(Slot))
@@ -235,6 +248,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                 yield return new MenuItem(typeof(GlobalTransform));
                 yield return new MenuItem(typeof(GetForward));
                 yield return new MenuItem(typeof(GetChild));
+                yield return new MenuItem(typeof(ChildrenCount));
             }
 
             else if (outputProxy.OutputType.Value == typeof(bool))
@@ -275,43 +289,59 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         }
     }
 
-    internal static readonly Dictionary<Type, Type> UnpackNodeMapping = new() {
-        {typeof(bool2), typeof(Unpack_Bool2)},
-        {typeof(bool3), typeof(Unpack_Bool3)},
-        {typeof(bool4), typeof(Unpack_Bool4)},
+    internal static readonly Dictionary<Type, Type[]> UnpackNodeMapping = new() {
+        // "core" IVector types
+        {typeof(bool2), [typeof(Unpack_Bool2)]},
+        {typeof(bool3), [typeof(Unpack_Bool3)]},
+        {typeof(bool4), [typeof(Unpack_Bool4)]},
 
-        {typeof(int2), typeof(Unpack_Int2)},
-        {typeof(int3), typeof(Unpack_Int3)},
-        {typeof(int4), typeof(Unpack_Int4)},
+        {typeof(int2), [typeof(Unpack_Int2)]},
+        {typeof(int3), [typeof(Unpack_Int3)]},
+        {typeof(int4), [typeof(Unpack_Int4)]},
 
-        {typeof(long2), typeof(Unpack_Long2)},
-        {typeof(long3), typeof(Unpack_Long3)},
-        {typeof(long4), typeof(Unpack_Long4)},
+        {typeof(long2), [typeof(Unpack_Long2)]},
+        {typeof(long3), [typeof(Unpack_Long3)]},
+        {typeof(long4), [typeof(Unpack_Long4)]},
 
-        {typeof(uint2), typeof(Unpack_Uint2)},
-        {typeof(uint3), typeof(Unpack_Uint3)},
-        {typeof(uint4), typeof(Unpack_Uint4)},
+        {typeof(uint2), [typeof(Unpack_Uint2)]},
+        {typeof(uint3), [typeof(Unpack_Uint3)]},
+        {typeof(uint4), [typeof(Unpack_Uint4)]},
 
-        {typeof(ulong2), typeof(Unpack_Ulong2)},
-        {typeof(ulong3), typeof(Unpack_Ulong3)},
-        {typeof(ulong4), typeof(Unpack_Ulong4)},
+        {typeof(ulong2), [typeof(Unpack_Ulong2)]},
+        {typeof(ulong3), [typeof(Unpack_Ulong3)]},
+        {typeof(ulong4), [typeof(Unpack_Ulong4)]},
 
-        {typeof(float2), typeof(Unpack_Float2)},
-        {typeof(float3), typeof(Unpack_Float3)},
-        {typeof(float4), typeof(Unpack_Float4)},
+        {typeof(float2), [typeof(Unpack_Float2)]},
+        {typeof(float3), [typeof(Unpack_Float3)]},
+        {typeof(float4), [typeof(Unpack_Float4)]},
 
-        {typeof(double2), typeof(Unpack_Double2)},
-        {typeof(double3), typeof(Unpack_Double3)},
-        {typeof(double4), typeof(Unpack_Double4)},
+        {typeof(double2), [typeof(Unpack_Double2)]},
+        {typeof(double3), [typeof(Unpack_Double3)]},
+        {typeof(double4), [typeof(Unpack_Double4)]},
+
+        // quaternions
+        {typeof(floatQ), [typeof(Unpack_FloatQ)]},
+        {typeof(doubleQ), [typeof(Unpack_DoubleQ)]},
+        
+        // colors
+        {typeof(color), [typeof(Unpack_Color)]},
+        {typeof(colorX), [typeof(Unpack_ColorX)]},
+
+        {typeof(float2x2),  [typeof(UnpackRows_Float2x2), typeof(UnpackColumns_Float2x2)]},
+        {typeof(float3x3),  [typeof(UnpackRows_Float3x3), typeof(UnpackColumns_Float3x3)]},
+        {typeof(float4x4),  [typeof(UnpackRows_Float4x4), typeof(UnpackColumns_Float4x4)]},
+        {typeof(double2x2),  [typeof(UnpackRows_Double2x2), typeof(UnpackColumns_Double2x2)]},
+        {typeof(double3x3),  [typeof(UnpackRows_Double3x3), typeof(UnpackColumns_Double3x3)]},
+        {typeof(double4x4),  [typeof(UnpackRows_Double4x4), typeof(UnpackColumns_Double4x4)]},
     };
 
-    internal static bool TryGetUnpackNode(Type nodeType, out Type? value)
+    internal static bool TryGetUnpackNode(Type nodeType, out Type[]? value)
     {
         if (ReflectionHelper.IsNullable(nodeType) && Nullable.GetUnderlyingType(nodeType).IsUnmanaged())
         {
             try
             {
-                value = typeof(UnpackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType));
+                value = [typeof(UnpackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType))];
                 return true;
             }
             catch
@@ -323,45 +353,55 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         return UnpackNodeMapping.TryGetValue(nodeType, out value);
     }
 
-    internal static readonly Dictionary<Type, Type> PackNodeMapping = new() {
-        {typeof(bool2), typeof(Pack_Bool2)},
-        {typeof(bool3), typeof(Pack_Bool3)},
-        {typeof(bool4), typeof(Pack_Bool4)},
+    internal static readonly Dictionary<Type, Type[]> PackNodeMapping = new() {
+        {typeof(bool2), [typeof(Pack_Bool2)]},
+        {typeof(bool3), [typeof(Pack_Bool3)]},
+        {typeof(bool4), [typeof(Pack_Bool4)]},
 
-        {typeof(int2), typeof(Pack_Int2)},
-        {typeof(int3), typeof(Pack_Int3)},
-        {typeof(int4), typeof(Pack_Int4)},
+        {typeof(int2), [typeof(Pack_Int2)]},
+        {typeof(int3), [typeof(Pack_Int3)]},
+        {typeof(int4), [typeof(Pack_Int4)]},
 
-        {typeof(long2), typeof(Pack_Long2)},
-        {typeof(long3), typeof(Pack_Long3)},
-        {typeof(long4), typeof(Pack_Long4)},
+        {typeof(long2), [typeof(Pack_Long2)]},
+        {typeof(long3), [typeof(Pack_Long3)]},
+        {typeof(long4), [typeof(Pack_Long4)]},
 
-        {typeof(uint2), typeof(Pack_Uint2)},
-        {typeof(uint3), typeof(Pack_Uint3)},
-        {typeof(uint4), typeof(Pack_Uint4)},
+        {typeof(uint2), [typeof(Pack_Uint2)]},
+        {typeof(uint3), [typeof(Pack_Uint3)]},
+        {typeof(uint4), [typeof(Pack_Uint4)]},
 
-        {typeof(ulong2), typeof(Pack_Ulong2)},
-        {typeof(ulong3), typeof(Pack_Ulong3)},
-        {typeof(ulong4), typeof(Pack_Ulong4)},
+        {typeof(ulong2), [typeof(Pack_Ulong2)]},
+        {typeof(ulong3), [typeof(Pack_Ulong3)]},
+        {typeof(ulong4), [typeof(Pack_Ulong4)]},
 
-        {typeof(float2), typeof(Pack_Float2)},
-        {typeof(float3), typeof(Pack_Float3)},
-        {typeof(float4), typeof(Pack_Float4)},
+        {typeof(float2), [typeof(Pack_Float2)]},
+        {typeof(float3), [typeof(Pack_Float3)]},
+        {typeof(float4), [typeof(Pack_Float4)]},
 
-        {typeof(double2), typeof(Pack_Double2)},
-        {typeof(double3), typeof(Pack_Double3)},
-        {typeof(double4), typeof(Pack_Double4)},
+        {typeof(double2), [typeof(Pack_Double2)]},
+        {typeof(double3), [typeof(Pack_Double3)]},
+        {typeof(double4), [typeof(Pack_Double4)]},
 
-        {typeof(ZitaParameters), typeof(ConstructZitaParameters)},
+        {typeof(color), [typeof(Pack_Color)]},
+        {typeof(colorX), [typeof(Pack_ColorX)]},
+
+        {typeof(float2x2),  [typeof(PackRows_Float2x2), typeof(PackColumns_Float2x2)]},
+        {typeof(float3x3),  [typeof(PackRows_Float3x3), typeof(PackColumns_Float3x3)]},
+        {typeof(float4x4),  [typeof(PackRows_Float4x4), typeof(PackColumns_Float4x4), typeof(ComposeTRS_Float4x4)]},
+        {typeof(double2x2),  [typeof(PackRows_Double2x2), typeof(PackColumns_Double2x2)]},
+        {typeof(double3x3),  [typeof(PackRows_Double3x3), typeof(PackColumns_Double3x3)]},
+        {typeof(double4x4),  [typeof(PackRows_Double4x4), typeof(PackColumns_Double4x4), typeof(ComposeTRS_Double4x4)]},
+
+        {typeof(ZitaParameters), [typeof(ConstructZitaParameters)]},
     };
 
-    internal static bool TryGetPackNode(Type nodeType, out Type value)
+    internal static bool TryGetPackNode(Type nodeType, out Type[] value)
     {
         if (ReflectionHelper.IsNullable(nodeType) && Nullable.GetUnderlyingType(nodeType).IsUnmanaged())
         {
             try
             {
-                value = typeof(PackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType));
+                value = [typeof(PackNullable<>).MakeGenericType(Nullable.GetUnderlyingType(nodeType))];
                 return true;
             }
             catch
