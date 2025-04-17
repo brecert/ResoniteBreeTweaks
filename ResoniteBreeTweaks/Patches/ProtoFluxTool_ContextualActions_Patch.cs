@@ -20,6 +20,8 @@ using ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Audio;
 using SharpPipe;
 using ProtoFlux.Runtimes.Execution.Nodes.TimeAndDate;
 using ProtoFlux.Runtimes.Execution.Nodes.Math;
+using ProtoFlux.Runtimes.Execution.Nodes.Strings.Characters;
+using ProtoFlux.Runtimes.Execution.Nodes.Strings;
 
 namespace BreeTweaks.Patches;
 
@@ -290,6 +292,17 @@ internal static class ProtoFluxTool_ContextualActions_Patch
             yield return new MenuItem(typeof(AND_Bool));
             yield return new MenuItem(typeof(OR_Bool));
             yield return new MenuItem(typeof(NOT_Bool));
+        }
+
+        else if (outputProxy.OutputType.Value == typeof(string))
+        {
+            yield return new MenuItem(typeof(GetCharacter));
+            yield return new MenuItem(typeof(StringLength));
+            yield return new MenuItem(typeof(CountOccurrences));
+            yield return new MenuItem(typeof(IndexOfString));
+            yield return new MenuItem(typeof(Contains));
+            yield return new MenuItem(typeof(Substring));
+            yield return new MenuItem(typeof(FormatString));
         }
     }
 
