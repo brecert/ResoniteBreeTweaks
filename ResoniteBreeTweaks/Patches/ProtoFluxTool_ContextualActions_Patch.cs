@@ -28,12 +28,13 @@ namespace BreeTweaks.Patches;
 internal static class ProtoFluxTool_ContextualActions_Patch
 {
 
-    internal readonly struct MenuItem(Type node, Type? binding = null, string? name = null)
+    internal readonly struct MenuItem(Type node, Type? binding = null, string? name = null, bool overload = false)
     {
         internal readonly Type node = node;
         internal readonly Type? binding = binding;
-
         internal readonly string? name = name;
+
+        internal readonly bool overload = overload;
     }
 
     internal static bool Prefix(ProtoFluxTool __instance, SyncRef<ProtoFluxElementProxy> ____currentProxy)
@@ -63,8 +64,21 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                             {
                                 AddMenuItem(__instance, menu, inputProxy.InputType.Value.GetTypeColor(), item, n =>
                                 {
-                                    var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
-                                    elementProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
+                                    if (item.overload)
+                                    {
+                                        __instance.StartTask(async () =>
+                                        {
+                                            // this is dumb
+                                            await new Updates(0);
+                                            var output = n.GetOutput(0); // TODO: specify
+                                            elementProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
+                                        });
+                                    }
+                                    else
+                                    {
+                                        var output = n.NodeOutputs.First(o => typeof(INodeOutput<>).MakeGenericType(inputProxy.InputType).IsAssignableFrom(o.GetType()));
+                                        elementProxy.Node.Target.TryConnectInput(inputProxy.NodeInput.Target, output, allowExplicitCast: false, undoable: true);
+                                    }
                                 });
                             }
                             break;
@@ -75,6 +89,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                             {
                                 AddMenuItem(__instance, menu, outputProxy.OutputType.Value.GetTypeColor(), item, n =>
                                 {
+                                    if (item.overload) throw new Exception("Overloading with ProtoFluxOutputProxy is not supported");
                                     var input = n.NodeInputs.First(i => typeof(INodeOutput<>).MakeGenericType(outputProxy.OutputType).IsAssignableFrom(i.TargetType));
                                     n.TryConnectInput(input, outputProxy.NodeOutput.Target, allowExplicitCast: false, undoable: true);
                                 });
@@ -88,6 +103,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                                 // the colors should almost always be the same so unique colors are more important maybe?
                                 AddMenuItem(__instance, menu, item.node.GetTypeColor(), item, n =>
                                 {
+                                    if (item.overload) throw new Exception("Overloading with ProtoFluxImpulseProxy is not supported");
                                     n.TryConnectImpulse(impulseProxy.NodeImpulse.Target, n.GetOperation(0), undoable: true);
                                 });
                             }
@@ -99,6 +115,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
                             {
                                 AddMenuItem(__instance, menu, item.node.GetTypeColor(), item, n =>
                                 {
+                                    if (item.overload) throw new Exception("Overloading with ProtoFluxOperationProxy is not supported");
                                     n.TryConnectImpulse(n.GetImpulse(0), operationProxy.NodeOperation.Target, undoable: true);
                                 });
                             }
@@ -320,6 +337,11 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         {
             yield return new MenuItem(typeof(UtcNow));
             yield return new MenuItem(typeof(FromUnixMilliseconds));
+        }
+
+        else if (inputProxy.Node.Target.NodeType == typeof(ValueMul<floatQ>))
+        {
+            yield return new MenuItem(typeof(GetForward), overload: true);
         }
     }
 
