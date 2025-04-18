@@ -202,7 +202,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
     internal static IEnumerable<MenuItem> GeneralNumericOperationMenuItems(ProtoFluxElementProxy? target)
     {
         {
-            if (target is ProtoFluxOutputProxy { OutputType.Value: var outputType } && outputType.IsUnmanaged())
+            if (target is ProtoFluxOutputProxy { OutputType.Value: var outputType } && (outputType.IsUnmanaged() || typeof(ISphericalHarmonics).IsAssignableFrom(outputType)))
             {
                 var coder = Traverse.Create(typeof(Coder<>).MakeGenericType(outputType));
                 var isMatrix = typeof(IMatrix).IsAssignableFrom(outputType);
@@ -287,8 +287,7 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         else if (outputProxy.OutputType.Value == typeof(bool))
         {
             yield return new MenuItem(typeof(If));
-            yield return new MenuItem(typeof(ValueConditional<int>)); // dummy type when
-                                                                      // todo: convert to multi?
+            yield return new MenuItem(typeof(ValueConditional<int>)); // dummy type when // todo: convert to multi?
             yield return new MenuItem(typeof(AND_Bool));
             yield return new MenuItem(typeof(OR_Bool));
             yield return new MenuItem(typeof(NOT_Bool));
@@ -350,6 +349,12 @@ internal static class ProtoFluxTool_ContextualActions_Patch
         {
             yield return new MenuItem(typeof(UtcNow));
             yield return new MenuItem(typeof(FromUnixMilliseconds));
+        }
+
+        else if (inputType == typeof(Slot))
+        {
+            yield return new MenuItem(typeof(RootSlot));
+            yield return new MenuItem(typeof(LocalUserSlot));
         }
 
         else if (inputProxy.Node.Target.NodeType == typeof(ValueMul<floatQ>))
