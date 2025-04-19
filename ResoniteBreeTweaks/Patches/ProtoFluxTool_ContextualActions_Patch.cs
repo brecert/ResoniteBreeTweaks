@@ -25,11 +25,10 @@ using ProtoFlux.Runtimes.Execution.Nodes.Strings;
 
 namespace BreeTweaks.Patches;
 
-[HarmonyPatchCategory("ProtoFluxTool Contextual Actions"), TweakCategory("Adds 'Contextual Actions' to the ProtoFluxTool. The secondary press while holding a protoflux tool will be open a context menu of quick actions based on what wire you're dragging instead of always spawning an input node. Pressing secondary again will spawn out an input node like normal.")]
+[HarmonyPatchCategory("ProtoFluxTool Contextual Actions"), TweakCategory("Adds 'Contextual Actions' to the ProtoFlux Tool. The secondary press while holding a protoflux tool will be open a context menu of quick actions based on what wire you're dragging instead of always spawning an input node. Pressing secondary again will spawn out an input node like normal.")]
 [HarmonyPatch(typeof(ProtoFluxTool), nameof(ProtoFluxTool.OnSecondaryPress))]
 internal static class ProtoFluxTool_ContextualActions_Patch
 {
-
     internal readonly struct MenuItem(Type node, Type? binding = null, string? name = null, bool overload = false)
     {
         internal readonly Type node = node;
@@ -535,4 +534,9 @@ internal static class ProtoFluxTool_ContextualActions_Patch
     [HarmonyPatch(typeof(ProtoFluxHelper), "GetNodeForType")]
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static Type GetNodeForType(Type type, List<NodeTypeRecord> list) => throw new NotImplementedException();
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(Tool), "GetHit")]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static RaycastHit? GetHit(Tool instance) => throw new NotImplementedException();
 }
