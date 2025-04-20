@@ -13,6 +13,10 @@ using System.Linq;
 using FrooxEngine.Undo;
 using ProtoFlux.Runtimes.Execution.Nodes;
 using ProtoFlux.Runtimes.Execution.Nodes.Math.Easing;
+using ProtoFlux.Runtimes.Execution.Nodes.Operators;
+using System.Runtime.InteropServices;
+using ProtoFlux.Runtimes.Execution.Nodes.Math;
+using System;
 
 
 [HarmonyPatchCategory("ProtoFluxTool Contextual Swap Actions"), TweakCategory("Adds 'Contextual Swapping Actions' to the ProtoFlux Tool. Double pressing secondary pointing at a node with protoflux tool will be open a context menu of actions to swap the node for another node.")]
@@ -26,17 +30,18 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
     /// </summary>
     ByNameLossy,
     /// <summary>
-    /// Transfers the connections by index, only use this for nodes that are identitcal in inputs and outputs.
-    /// There is no sanity checking!!
-    /// </summary>
-    ByIndex,
-    /// <summary>
+    /// Uses names too :)
     /// Transfers the connections by a manually made set of mappings. Unmapped connections will be lost.
     /// </summary>
-    ByMappingsLossy
+    ByMappingsLossy,
+    /// <summary>
+    /// Uses names too :)
+    /// Attempts to match inputs of the same type 
+    /// </summary>
+    ByIndexLossy
   }
 
-  internal readonly struct MenuItem(Type node, Type? binding = null, string? name = null, ConnectionTransferType? connectionTransferType = ConnectionTransferType.ByNameLossy)
+  internal readonly struct MenuItem(Type node, Type? binding = null, string? name = null, ConnectionTransferType? connectionTransferType = ConnectionTransferType.ByNameLossy, Action<ProtoFluxNode>? onInit = null)
   {
     internal readonly Type node = node;
     internal readonly Type? binding = binding;
@@ -45,6 +50,8 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
     internal readonly ConnectionTransferType? connectionTransferType = connectionTransferType;
 
     internal readonly string DisplayName => name ?? NodeMetadataHelper.GetMetadata(node).Name ?? node.GetNiceTypeName();
+
+    internal readonly Action<ProtoFluxNode>? onInit = onInit;
   }
 
   internal class ProtoFluxNodeData
@@ -106,12 +113,21 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
 
   // TODO: find alternative to this, even generating it at runtime will feel bad.
   //       alternatives include manual conversions, 
-  internal static readonly Dictionary<(Type, Type), Dictionary<int, int>> CompiledInputMappings = new() {
+  internal static readonly Dictionary<(Type, Type), Dictionary<string, string>> CompiledInputMappings = new() {
     {(typeof(For), typeof(RangeLoopInt)), new () {
-      {NodeMetadataHelper.GetMetadata(typeof(For)).GetInputByName("Count").Index, NodeMetadataHelper.GetMetadata(typeof(RangeLoopInt)).GetInputByName("End").Index}
+      {"Count", "End"}
     }},
     {(typeof(RangeLoopInt), typeof(For)), new () {
-      {NodeMetadataHelper.GetMetadata(typeof(RangeLoopInt)).GetInputByName("End").Index, NodeMetadataHelper.GetMetadata(typeof(For)).GetInputByName("Count").Index}
+      {"End", "Count"}
+    }},
+  };
+
+  internal static readonly Dictionary<(Type, Type), Dictionary<string, string>> CompiledOutputMappings = new() {
+    {(typeof(For), typeof(RangeLoopInt)), new () {
+      {"Iteration", "Current"}
+    }},
+    {(typeof(RangeLoopInt), typeof(For)), new () {
+      {"Current", "Iteration"}
     }},
   };
 
@@ -136,6 +152,7 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
 
           var newNode = __instance.SpawnNode(binding);
           newNode.Slot.TRS = hitNode.Slot.TRS;
+          menuItem.onInit?.Invoke(newNode);
 
           var query = new NodeQueryAcceleration(runtime.Group);
           var evaluatingNodes = query.GetEvaluatingNodes(oldNode);
@@ -144,70 +161,82 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
           var remappedNodes = new Dictionary<INode, INode>() {
             {oldNode, newNode.NodeInstance}
           };
+          var oldMeta = NodeMetadataHelper.GetMetadata(oldNode.GetType());
+          var newMeta = NodeMetadataHelper.GetMetadata(newNode.NodeType);
 
           // outputs
-          foreach (var evaluatingNode in evaluatingNodes)
+          switch (menuItem.connectionTransferType)
           {
-            for (int i = 0; i < evaluatingNode.FixedInputCount; i++)
-            {
-              var source = evaluatingNode.GetInputSource(i);
-              if (source?.OwnerNode == oldNode)
+            case ConnectionTransferType.ByIndexLossy:
+              goto case ConnectionTransferType.ByNameLossy;
+            case ConnectionTransferType.ByMappingsLossy:
               {
-                var evaluatingNodeComponent = nodeReferences[evaluatingNode];
-                var outputIndex = source.FindLinearOutputIndex();
-                newNode.TryConnectInput(evaluatingNodeComponent.GetInput(i), newNode.GetOutput(outputIndex), allowExplicitCast: false, undoable: true);
+                var nodeOutputMappings = CompiledOutputMappings.GetValueSafe((oldNode.GetType(), menuItem.node));
+
+                var evaluatingInputs = evaluatingNodes.SelectMany(n => nodeReferences[n].AllInputs)
+                  .Where(i => ((INodeOutput)i.Target)?.MappedOutput?.OwnerNode == oldNode);
+
+                foreach (var input in evaluatingInputs)
+                {
+                  var oldName = oldNode.GetOutputName(((INodeOutput)input.Target).MappedOutput.FindLinearOutputIndex());
+                  if (nodeOutputMappings.TryGetValue(oldName, out var newName))
+                  {
+                    var newOutputIndex = newMeta.GetOutputByName(newName).Index;
+                    input.TrySet(newNode.GetOutput(newOutputIndex));
+                  }
+                }
+
+                goto case ConnectionTransferType.ByNameLossy;
               }
-            }
+            case ConnectionTransferType.ByNameLossy:
+              {
+                var evaluatingInputs = evaluatingNodes.SelectMany(n => nodeReferences[n].AllInputs)
+                  .Where(i => ((INodeOutput)i.Target)?.MappedOutput?.OwnerNode == oldNode);
+
+                foreach (var input in evaluatingInputs)
+                {
+                  var oldName = oldNode.GetOutputName(((INodeOutput)input.Target).MappedOutput.FindLinearOutputIndex());
+                  var newOutputIndex = newMeta.GetOutputByName(oldName).Index;
+                  input.TrySet(newNode.GetOutput(newOutputIndex));
+                }
+
+                break;
+              }
           }
 
           // inputs
           switch (menuItem.connectionTransferType)
           {
-
-            case ConnectionTransferType.ByNameLossy:
+            case ConnectionTransferType.ByIndexLossy:
+              var validInputs = hitNode.AllInputs.Zip(newNode.AllInputs, (a, b) => (a, b)).Where(z => z.a.TargetType == z.b.TargetType);
+              foreach (var (oldInput, newInput) in validInputs)
               {
-                var newMeta = NodeMetadataHelper.GetMetadata(menuItem.node);
-                var oldMeta = NodeMetadataHelper.GetMetadata(oldNode.GetType());
-                var validOutputs = newMeta.FixedOutputs
-                  .Zip(oldMeta.FixedOutputs, (a, b) => (a, b))
-                  .Where((z) => z.a.OutputType == z.b.OutputType);
-
-                foreach (var (a, b) in validOutputs)
-                {
-                  if (oldNode.GetInputSource(b.Index) is IOutput sourceNodeOutput)
-                  {
-                    var output = nodeReferences[sourceNodeOutput.OwnerNode].GetOutput(sourceNodeOutput.FindLinearOutputIndex());
-                    newNode.TryConnectInput(newNode.GetInput(a.Index), output, allowExplicitCast: false, undoable: true);
-                  }
-                }
-                break;
+                newInput.TrySet(oldInput.Target);
               }
-            case ConnectionTransferType.ByIndex:
-              {
-                for (int i = 0; i < oldNode.InputCount; i++)
-                {
-                  var inputSource = oldNode.GetInputSource(i);
-                  if (inputSource != null)
-                  {
-                    var output = nodeReferences[inputSource.OwnerNode].GetOutput(inputSource.FindLinearOutputIndex());
-                    newNode.TryConnectInput(newNode.GetInput(i), output, allowExplicitCast: false, undoable: true);
-                  }
-                }
-                break;
-              }
+              goto case ConnectionTransferType.ByNameLossy;
             case ConnectionTransferType.ByMappingsLossy:
               {
                 var nodeInputMappings = CompiledInputMappings.GetValueSafe((oldNode.GetType(), menuItem.node));
 
-                for (int i = 0; i < oldNode.InputCount; i++)
+                foreach (var oldInput in hitNode.AllInputs)
                 {
-                  if (oldNode.GetInputSource(i) is IOutput inputSource)
+                  if (nodeInputMappings?.TryGetValue(oldInput.Name, out var mappedName) ?? false)
                   {
-                    if (nodeInputMappings?.TryGetValue(i, out var mappedIndex) ?? false)
+                    var input = newNode.AllInputs.FirstOrDefault(i => i.Name == mappedName);
+                    input.TrySet(oldInput.Target);
+                  }
+                }
+                goto case ConnectionTransferType.ByNameLossy;
+              }
+            case ConnectionTransferType.ByNameLossy:
+              {
+                foreach (var newInput in newNode.AllInputs)
+                {
+                  foreach (var oldInput in hitNode.AllInputs)
+                  {
+                    if (newInput.Name == oldInput.Name)
                     {
-                      var newInput = newNode.GetInput(mappedIndex);
-                      var output = nodeReferences[inputSource.OwnerNode].GetOutput(inputSource.FindLinearOutputIndex());
-                      newNode.TryConnectInput(newInput, output, allowExplicitCast: false, undoable: true);
+                      newInput.TrySet(oldInput.Target);
                     }
                   }
                 }
@@ -216,21 +245,33 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
           }
 
 
-          // input impulses
-          foreach (var impulsingNode in impulsingNodes)
+          // output impulses
+          foreach (var oldImpulse in hitNode.AllImpulses)
           {
-            for (int i = 0; i < impulsingNode.FixedImpulseCount; i++)
+            foreach (var newImpulse in newNode.AllImpulses)
             {
-              var operation = impulsingNode.GetImpulseTarget(i);
-              if (operation?.OwnerNode == oldNode)
+              if (oldImpulse.Name == newImpulse.Name)
               {
-                var impulsingNodeComponent = nodeReferences[impulsingNode];
-                var operationIndex = operation.FindLinearOperationIndex();
-                newNode.TryConnectImpulse(impulsingNodeComponent.GetImpulse(i), newNode.GetOperation(operationIndex), undoable: true);
+                newNode.TryConnectImpulse(newImpulse, (INodeOperation)oldImpulse.Target, undoable: true);
               }
             }
           }
 
+          // input impulses
+          foreach (var impulsingNode in impulsingNodes)
+          {
+            foreach (var impulseRef in nodeReferences[impulsingNode].AllImpulses)
+            {
+              foreach (var operation in hitNode.NodeOperations)
+              {
+                if (impulseRef.Target == operation)
+                {
+                  var index = operation.MappedOperation.FindLinearOperationIndex();
+                  nodeReferences[impulsingNode].TryConnectImpulse(impulseRef, newNode.GetOperation(index), undoable: true);
+                }
+              }
+            }
+          }
 
           // delay for "seamless" transition
           // without this there will be an update where there are no nodes connectedm
@@ -339,6 +380,23 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
     typeof(EaseOutSineDouble),
   ];
 
+  static readonly HashSet<Type> BinaryOperationGroup = [
+    typeof(ValueAdd<>),
+    typeof(ValueSub<>),
+    typeof(ValueMul<>),
+    typeof(ValueDiv<>),
+    typeof(ValueMod<>),
+  ];
+
+  static readonly BiDictionary<Type, Type> MultiInputMappingGroup = new() {
+    {typeof(ValueAdd<>), typeof(ValueAddMulti<>)},
+    {typeof(ValueSub<>), typeof(ValueSubMulti<>)},
+    {typeof(ValueMul<>), typeof(ValueMulMulti<>)},
+    {typeof(ValueDiv<>), typeof(ValueDivMulti<>)},
+    {typeof(ValueMin<>), typeof(ValueMinMulti<>)},
+    {typeof(ValueMax<>), typeof(ValueMaxMulti<>)},
+  };
+
   internal static IEnumerable<MenuItem> GetMenuItems(ProtoFluxTool __instance, ProtoFluxNode nodeComponent)
   {
     var node = nodeComponent.NodeInstance;
@@ -379,8 +437,57 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
         yield return new MenuItem(match);
       }
     }
+
+    if (nodeType.TryGetGenericTypeDefinition(out var genericType))
+    {
+      if (BinaryOperationGroup.Contains(genericType))
+      {
+        var binopType = nodeType.GenericTypeArguments[0];
+        foreach (var match in BinaryOperationGroup)
+        {
+          var matchedNodeType = match.MakeGenericType(binopType);
+          if (matchedNodeType == nodeType) continue;
+          yield return new MenuItem(matchedNodeType);
+        }
+      }
+    }
+
+    // MultiInputMappingGroup
+    {
+      if (MultiInputMappingGroup.TryGetSecond(genericType, out var mapped))
+      {
+        var binopType = nodeType.GenericTypeArguments[0];
+        yield return new MenuItem(
+          node: mapped.MakeGenericType(binopType),
+          name: mapped.GetNiceTypeName(),
+          connectionTransferType: ConnectionTransferType.ByIndexLossy,
+          onInit: (n) =>
+          {
+            var inputList = n.GetInputList(0);
+            inputList.AddElement();
+            inputList.AddElement();
+          }
+        );
+      }
+      else if (MultiInputMappingGroup.TryGetFirst(genericType, out mapped))
+      {
+        var binopType = nodeType.GenericTypeArguments[0];
+        yield return new MenuItem(mapped.MakeGenericType(binopType), connectionTransferType: ConnectionTransferType.ByIndexLossy);
+      }
+    }
   }
 
+  // Utils
+  static bool TryGetGenericTypeDefinition(this Type type, out Type? genericTypeDefinition)
+  {
+    if (type.IsGenericType)
+    {
+      genericTypeDefinition = type.GetGenericTypeDefinition();
+      return true;
+    }
+    genericTypeDefinition = null;
+    return false;
+  }
 
 
   [HarmonyReversePatch]
