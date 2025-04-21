@@ -150,7 +150,28 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
 
           var undoBatch = __instance.World.BeginUndoBatch($"Swap {hitNode.Name} to {menuItem.DisplayName}");
 
-          var newNode = __instance.SpawnNode(binding);
+          var newNode = __instance.SpawnNode(binding, n =>
+          {
+            // this will be so buggy, I need to make my own protoflux helper library so I'm not constantly fighting all of the edge cases of protoflux
+            var sharedInputListsByOrder = hitNode.NodeInputLists.Zip(n.NodeInputLists, (a, b) => (a, b)).Where((z) => z.b.GetType().IsAssignableFrom(z.a.GetType()));
+            var elementsEnsured = false;
+            foreach (var (oldList, newList) in sharedInputListsByOrder)
+            {
+              if (oldList.Count > newList.Count)
+              {
+                elementsEnsured = true;
+                var missingElements = oldList.Count - newList.Count;
+                for (int i = 0; i < missingElements; i++)
+                {
+                  newList.AddElement();
+                }
+              }
+            }
+            if (!elementsEnsured)
+            {
+              n.EnsureElementsInDynamicLists();
+            }
+          });
           newNode.Slot.TRS = hitNode.Slot.TRS;
           menuItem.onInit?.Invoke(newNode);
 
@@ -388,6 +409,13 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
     typeof(ValueMod<>),
   ];
 
+  static readonly HashSet<Type> BinaryOperationGroupMulti = [
+    typeof(ValueAddMulti<>),
+    typeof(ValueSubMulti<>),
+    typeof(ValueMulMulti<>),
+    typeof(ValueDivMulti<>),
+  ];
+
   static readonly BiDictionary<Type, Type> MultiInputMappingGroup = new() {
     {typeof(ValueAdd<>), typeof(ValueAddMulti<>)},
     {typeof(ValueSub<>), typeof(ValueSubMulti<>)},
@@ -450,31 +478,41 @@ internal static class ProtoFluxTool_ContextualSwapActions_Patch
           yield return new MenuItem(matchedNodeType);
         }
       }
+
+      if (BinaryOperationGroupMulti.Contains(genericType))
+      {
+        var binopType = nodeType.GenericTypeArguments[0];
+        foreach (var match in BinaryOperationGroupMulti)
+        {
+          var matchedNodeType = match.MakeGenericType(binopType);
+          if (matchedNodeType == nodeType) continue;
+          yield return new MenuItem(
+            node: matchedNodeType,
+            name: matchedNodeType.GetNiceTypeName(),
+            connectionTransferType: ConnectionTransferType.ByIndexLossy
+          );
+        }
+      }
+
+      // MultiInputMappingGroup
+      {
+        if (MultiInputMappingGroup.TryGetSecond(genericType, out var mapped))
+        {
+          var binopType = nodeType.GenericTypeArguments[0];
+          yield return new MenuItem(
+            node: mapped.MakeGenericType(binopType),
+            name: mapped.GetNiceTypeName(),
+            connectionTransferType: ConnectionTransferType.ByIndexLossy
+          );
+        }
+        else if (MultiInputMappingGroup.TryGetFirst(genericType, out mapped))
+        {
+          var binopType = nodeType.GenericTypeArguments[0];
+          yield return new MenuItem(mapped.MakeGenericType(binopType), connectionTransferType: ConnectionTransferType.ByIndexLossy);
+        }
+      }
     }
 
-    // MultiInputMappingGroup
-    {
-      if (MultiInputMappingGroup.TryGetSecond(genericType, out var mapped))
-      {
-        var binopType = nodeType.GenericTypeArguments[0];
-        yield return new MenuItem(
-          node: mapped.MakeGenericType(binopType),
-          name: mapped.GetNiceTypeName(),
-          connectionTransferType: ConnectionTransferType.ByIndexLossy,
-          onInit: (n) =>
-          {
-            var inputList = n.GetInputList(0);
-            inputList.AddElement();
-            inputList.AddElement();
-          }
-        );
-      }
-      else if (MultiInputMappingGroup.TryGetFirst(genericType, out mapped))
-      {
-        var binopType = nodeType.GenericTypeArguments[0];
-        yield return new MenuItem(mapped.MakeGenericType(binopType), connectionTransferType: ConnectionTransferType.ByIndexLossy);
-      }
-    }
   }
 
   // Utils
