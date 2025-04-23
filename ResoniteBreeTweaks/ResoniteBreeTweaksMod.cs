@@ -138,7 +138,7 @@ public class ResoniteBreeTweaksMod : ResoniteMod
       else
       {
         DebugFunc(() => $"Unpatching {category}...");
-        harmony.UnpatchAll(HarmonyId);
+        harmony.UnpatchCategory(category.ToString());
       }
     }
     catch (Exception e)
