@@ -9,7 +9,7 @@
 		<RepositoryUrl>https://github.com/brecert/ResoniteBreeTweaks</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>Resonite,Mod,ResoniteModLoader,Tweaks</PackageTags>
-		<Version>0.0.2.0</Version>
+		<Version>0.0.3.0</Version>
 		<PackageReadmeFile>../README.md</PackageReadmeFile>
 	</PropertyGroup>
 
