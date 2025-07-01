@@ -8,7 +8,7 @@ using System;
 using System.Threading.Tasks;
 
 [HarmonyPatch(typeof(CubemapCreator), "OnAttach")]
-[HarmonyPatchCategory("aaa"), TweakCategory("aaa.")]
+[HarmonyPatchCategory("Live Cubemap Previews"), TweakCategory("Displays a live preview of what the cubemap will look like, updating every time a change is made.")]
 class Cubemap_Preview_Patch
 {
   internal static void Postfix(CubemapCreator __instance)
@@ -42,8 +42,6 @@ class Cubemap_Preview_Patch
         list.Add(await (__instance.PosZ.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         list.Add(await (__instance.NegZ.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         bitmaps = list;
-        UniLog.Log(list.Join());
-        UniLog.Log(bitmaps.Join());
         int num = 0;
         TextureFormat? textureFormat = null;
         bool mipmaps = true;
@@ -107,7 +105,6 @@ class Cubemap_Preview_Patch
           }
         }
         Uri asset = await __instance.Engine.LocalDB.SaveAssetAsync(bitmapCube).ConfigureAwait(continueOnCapturedContext: false);
-        UniLog.Log($"ASSET: {asset}");
         await default(ToWorld);
         cubemap.URL.Value = asset;
       }
