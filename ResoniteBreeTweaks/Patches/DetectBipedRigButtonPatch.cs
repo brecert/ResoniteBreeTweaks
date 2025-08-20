@@ -1,13 +1,7 @@
 using FrooxEngine;
 using BreeTweaks.Attributes;
 using HarmonyLib;
-using FrooxEngine.CommonAvatar;
-using System.Reflection.Emit;
-using System.Collections.Generic;
-using ResoniteModLoader;
-using FrooxEngine.ProtoFlux;
 using System;
-using Elements.Core;
 using FrooxEngine.UIX;
 using System.Runtime.CompilerServices;
 using FrooxEngine.FinalIK;

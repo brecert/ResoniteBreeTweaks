@@ -9,7 +9,7 @@
 		<RepositoryUrl>https://github.com/brecert/ResoniteBreeTweaks</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>Resonite,Mod,ResoniteModLoader,Tweaks</PackageTags>
-		<Version>0.0.4.0</Version>
+		<Version>0.0.5.0</Version>
 		<PackageReadmeFile>../README.md</PackageReadmeFile>
 	</PropertyGroup>
 
@@ -28,7 +28,7 @@
     </PropertyGroup>
     
     <PropertyGroup>
-        <TargetFramework>net48</TargetFramework>
+        <TargetFramework>net9</TargetFramework>
         <ResoniteProjectType>mod</ResoniteProjectType>
         <ResoniteTarget>client</ResoniteTarget>
         <ResoniteInstallOnBuild>true</ResoniteInstallOnBuild>
@@ -50,6 +50,7 @@
         <ResoniteReference Include="Elements.Core" />
         <ResoniteReference Include="Elements.Assets" />
         <ResoniteReference Include="FrooxEngine.Store" />
+        <ResoniteReference Include="Renderite.Shared" />
         <ResoniteReference Include="SharpPipe" />
     </ItemGroup>
 
@@ -58,8 +59,7 @@
     </ItemGroup>
 
     <PropertyGroup>
-        <_ResoniteAssemblyPath>$(ResonitePath)/Resonite_Data/Managed</_ResoniteAssemblyPath>
-        <_ResoniteAssemblyPath Condition="'$(ResoniteTarget)' == 'headless'">$(ResonitePath)</_ResoniteAssemblyPath>
+        <_ResoniteAssemblyPath>$(ResonitePath)</_ResoniteAssemblyPath>
         <ReferencePath>$(_ResoniteAssemblyPath);$(ReferencePath)</ReferencePath>
     </PropertyGroup>
 

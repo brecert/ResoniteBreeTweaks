@@ -4,7 +4,6 @@ using HarmonyLib;
 using FrooxEngine.CommonAvatar;
 using System.Reflection.Emit;
 using System.Collections.Generic;
-using ResoniteModLoader;
 
 namespace BreeTweaks.Patches;
 

@@ -6,6 +6,7 @@ using Elements.Assets;
 using Elements.Core;
 using System;
 using System.Threading.Tasks;
+using Renderite.Shared;
 
 [HarmonyPatch(typeof(CubemapCreator), "OnAttach")]
 [HarmonyPatchCategory("Live Cubemap Previews"), TweakCategory("Displays a live preview of what the cubemap will look like, updating every time a change is made.")]
