@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+  	<Version>0.1.0</Version>
+		<Authors>bree</Authors>
+		<Description>This mod provides various miscellanious personal tweaks and fixes.</Description>
+		<PackageTags>Resonite,Mod,ResoniteModLoader,Tweaks</PackageTags>
+	</PropertyGroup>
+
+	<PropertyGroup>
+   	<Title>Bree's Tweaks</Title>
+		<PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AssemblyTitle>$(Title)</AssemblyTitle>
+    <Copyright>Copyright (c) 2026 $(Authors)</Copyright>
+   	<Product>$(AssemblyTitle)</Product>
+	</PropertyGroup>
+	
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>BreeTweaks</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ResoniteProjectType>rml_mod</ResoniteProjectType>
+    <ResoniteInstallOnBuild>true</ResoniteInstallOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ResoniteReference Include="FrooxEngine" />
+    <ResoniteReference Include="ProtoFlux.Core" />
+    <ResoniteReference Include="ProtoFlux.Nodes.Core" />
+    <ResoniteReference Include="ProtoFlux.Nodes.FrooxEngine" />
+    <ResoniteReference Include="ProtoFluxBindings" />
+    <ResoniteReference Include="Elements.Core" />
+    <ResoniteReference Include="Elements.Assets" />
+    <ResoniteReference Include="FrooxEngine.Store" />
+    <ResoniteReference Include="Renderite.Shared" />
+    <ResoniteReference Include="SharpPipe" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ResoniteModLoader">
+      <HintPath>$(ResonitePath)/ResoniteModLoader.dll</HintPath>
+      <HintPath>$(ResonitePath)/Libraries/ResoniteModLoader.dll</HintPath>
+  		<Private>False</Private>
+    </Reference>
+    <Reference Include="HarmonyLib">
+      <HintPath>$(ResonitePath)/0Harmony.dll</HintPath>
+      <HintPath>$(ResonitePath)/rml_libs/0Harmony.dll</HintPath>
+  		<Private>False</Private>
+    </Reference>
+    <Reference Include="ResoniteHotReloadLib" Condition="'$(Configuration)'=='Debug'">
+      <HintPath>$(ResonitePath)/rml_libs/ResoniteHotReloadLib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
