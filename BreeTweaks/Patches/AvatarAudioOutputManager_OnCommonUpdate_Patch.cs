@@ -21,7 +21,7 @@ internal static class AvatarAudioOutputManager_OnCommonUpdate_Patch
     var codeMatcher = new CodeMatcher(instructions);
     var refFloat = 0f;
 
-    var propertyInfo = typeof(UserRoot).GetProperty(nameof(UserRoot.GlobalScale));
+    var propertyInfo = typeof(UserRoot).GetProperty(nameof(UserRoot.GlobalScale))!;
 
     codeMatcher
         .MatchEndForward([
