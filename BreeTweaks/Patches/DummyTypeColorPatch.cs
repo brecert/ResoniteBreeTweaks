@@ -8,9 +8,9 @@ using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 
-[HarmonyPatch(typeof(DatatypeColorHelper), "GetTypeColor")]
+[HarmonyPatch(typeof(DatatypeColorHelper), nameof(DatatypeColorHelper.GetTypeColor))]
 [TweakCategory("Dummy Type Color", "Modifies the Type color of dummy to give it a custom one that's more visually fitting.")]
-internal static class DatatypeColorHelper_GetTypeColor_Patch
+internal static class DummyTypeColorPatch
 {
   internal static bool Prefix(Type type, ref colorX __result)
   {

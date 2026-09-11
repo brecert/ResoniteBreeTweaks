@@ -10,8 +10,8 @@ using HarmonyLib;
 namespace BreeTweaks.Patches;
 
 [HarmonyPatch(typeof(AvatarAudioOutputManager), "OnCommonUpdate")]
-[TweakCategory("Earmuff Global Distance", "Modifies earmuff mode to use the global distance space, rather than scaling the distance by the local scale.", defaultValue: false)]
-internal static class AvatarAudioOutputManager_OnCommonUpdate_Patch
+[TweakCategory("Earmuff Global Distance", "Modifies earmuff mode to use the global distance space, rather than scaling the distance by the local scale.")]
+internal static class EarmuffGlobalDistancePatch
 {
   // [AutoRegisterConfigKey]
   // private static readonly ModConfigurationKey<bool> Enabled = new("Enabled", "Should the global distance be used instead of the local scale.", () => true);
