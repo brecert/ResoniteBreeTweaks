@@ -1,5 +1,3 @@
-using System;
-
 using BreeTweaks.Attributes;
 
 using Elements.Core;
