@@ -7,7 +7,7 @@ using FrooxEngine.ProtoFlux;
 using HarmonyLib;
 
 [HarmonyPatch(typeof(DatatypeColorHelper), nameof(DatatypeColorHelper.GetTypeColor))]
-[TweakCategory("Type Color Cache", "Adds caching for `GetTypeColor`. This has no measured performance impact.")]
+[TweakCategory("Type Color Cache", "Adds caching for `GetTypeColor`. This has no measured performance impact.", defaultValue: false)]
 internal static class TypeColorCachePatch
 {
   internal static readonly Dictionary<Type, colorX> TypeColorMap = [];
