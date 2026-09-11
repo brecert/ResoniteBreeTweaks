@@ -40,7 +40,7 @@ class Cubemap_Preview_Patch
       try
       {
         List<Bitmap2D?> bitmaps = [];
-        List<Bitmap2D?> list = bitmaps;
+        var list = bitmaps;
         list.Add(await (__instance.PosX.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         list.Add(await (__instance.NegX.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         list.Add(await (__instance.PosY.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
@@ -48,9 +48,9 @@ class Cubemap_Preview_Patch
         list.Add(await (__instance.PosZ.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         list.Add(await (__instance.NegZ.Asset?.GetOriginalTextureData() ?? Task.Run(() => EmptyBitmap2D)));
         bitmaps = list;
-        int num = 0;
+        var num = 0;
         TextureFormat? textureFormat = null;
-        bool mipmaps = true;
+        var mipmaps = true;
         foreach (var item in bitmaps)
         {
           if (item != null)
@@ -67,9 +67,9 @@ class Cubemap_Preview_Patch
           }
         }
         num = MathX.NearestPowerOfTwo(num);
-        for (int i = 0; i < bitmaps.Count; i++)
+        for (var i = 0; i < bitmaps.Count; i++)
         {
-          int index = i;
+          var index = i;
           var bitmap2D = bitmaps[i];
           Bitmap2D? value;
           if (bitmap2D == null)
@@ -78,13 +78,13 @@ class Cubemap_Preview_Patch
           }
           else
           {
-            int2 v = int2.One;
+            var v = int2.One;
             value = bitmap2D.GetRescaled(v * num);
           }
           bitmaps[index] = value;
         }
-        int index2 = 2;
-        int index3 = 3;
+        var index2 = 2;
+        var index3 = 3;
         switch (__instance.TopBottomRotation.Value)
         {
           case CubemapCreator.Rotation.Rotate180:
@@ -102,7 +102,7 @@ class Cubemap_Preview_Patch
         }
         var bitmapCube = new BitmapCube(num, num, textureFormat ?? TextureFormat.RGBA32, mipmaps, bitmaps[0]?.Profile ?? ColorProfile.Linear);
 
-        for (int j = 0; j < bitmaps.Count; j++)
+        for (var j = 0; j < bitmaps.Count; j++)
         {
           var bitmap2D2 = bitmaps[j];
           if (bitmap2D2 != null)
@@ -110,7 +110,7 @@ class Cubemap_Preview_Patch
             bitmapCube.FillFrom(bitmap2D2, (BitmapCube.Face)j, mipmaps);
           }
         }
-        Uri asset = await __instance.Engine.LocalDB.SaveAssetAsync(bitmapCube).ConfigureAwait(continueOnCapturedContext: false);
+        var asset = await __instance.Engine.LocalDB.SaveAssetAsync(bitmapCube).ConfigureAwait(continueOnCapturedContext: false);
         await default(ToWorld);
         cubemap.URL.Value = asset;
       }
