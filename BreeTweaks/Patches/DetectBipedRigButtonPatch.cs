@@ -11,8 +11,8 @@ using HarmonyLib;
 namespace BreeTweaks.Patches;
 
 // Use Global Distance for Earmuff Mode
-[HarmonyPatchCategory("Additional BipedRig Actions"), TweakCategory("Adds 'Detect from Rig' and 'Setup VRIK' actions to the BipedRig component.")]
 [HarmonyPatch(typeof(BipedRig))]
+[TweakCategory("Additional BipedRig Actions", "Adds 'Detect from Rig' and 'Setup VRIK' actions to the BipedRig component.")]
 internal static class DetectBipedRigButtonPatch
 {
   [HarmonyPostfix]

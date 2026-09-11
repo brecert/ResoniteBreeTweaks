@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using System.Reflection;
 
 using BreeTweaks.Attributes;
@@ -13,7 +11,6 @@ using ResoniteModLoader;
 namespace BreeTweaks;
 
 using System.Collections.Generic;
-using System.ComponentModel;
 
 
 #if DEBUG
@@ -33,7 +30,7 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
   private static readonly Harmony harmony = new(HarmonyId);
 
-  private static ModConfiguration? config;
+  private static ModConfiguration? Config;
 
   private static readonly Dictionary<string, ModConfigurationKey<bool>> patchCategoryKeys = [];
   // private static readonly Dictionary<ModConfigurationKey, FieldInfo> patchOptionKeys = [];
@@ -44,44 +41,20 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
     var types = AccessTools.GetTypesFromAssembly(ModAssembly);
 
-    var categoryKeys = from t in types
-                       select (t.GetCustomAttribute<HarmonyPatchCategory>(), t.GetCustomAttribute<TweakCategoryAttribute>()) into t
-                       where t.Item1 is not null && t.Item2 is not null
-                       select new ModConfigurationKey<bool>(t.Item1.info.category, t.Item2.Description, computeDefault: () => t.Item2.DefaultValue);
+    var categoryKeys = types
+      .Select(t => t.GetCustomAttribute<TweakCategory>())
+      .OfType<TweakCategory>()
+      .Select(t => new ModConfigurationKey<bool>(t.info.category, t.Description, () => t.DefaultValue));
 
     foreach (var key in categoryKeys)
     {
       DebugFunc(() => $"Registering patch category {key.Name}...");
       patchCategoryKeys[key.Name] = key;
     }
-
-    // var configFields = types
-    //   .Where(t => t.IsDefined(typeof(HarmonyPatchCategory)))
-    //   .SelectMany(AccessTools.GetDeclaredFields)
-    //   .Where(f => f.IsDefined(typeof(TweakOptionAttribute)));
-
-    // foreach (var field in configFields)
-    // {
-    //   DebugFunc(() => $"Registering patch config value {field.Name}...");
-    //   var configValue = field.GetCustomAttribute<TweakOptionAttribute>();
-    //   var defaultValue = field.GetCustomAttribute<DefaultValueAttribute>();
-
-    //   var key = typeof(ModConfigurationKey<>)
-    //     .MakeGenericType(field.FieldType)
-    //     .GetConstructor([typeof(string), typeof(string), typeof(Func<>).MakeGenericType(field.FieldType)])
-    //     .Invoke([configValue.Name, configValue.Description, defaultValue is not null ? () => defaultValue.Value : null]) as ModConfigurationKey;
-
-    //   patchOptionKeys[key] = field;
-    // }
   }
 
   public override void DefineConfiguration(ModConfigurationDefinitionBuilder builder)
   {
-    if (builder is null)
-    {
-      throw new ArgumentNullException(nameof(builder), "builder is null.");
-    }
-
     foreach (var key in patchCategoryKeys.Values)
     {
       DebugFunc(() => $"Adding configuration key for {key.Name}...");
@@ -92,44 +65,37 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
   public override void OnEngineInit()
   {
-    config = GetConfiguration()!; // todo: tired, fix
-    config.OnThisConfigurationChanged += OnConfigChanged;
+    Config = GetConfiguration()!; // todo: tired, fix
+    Config.OnThisConfigurationChanged += OnConfigChanged;
 
-    InitCategories();
+    PatchCategories();
 
 #if DEBUG
     HotReloader.RegisterForHotReload(this);
 #endif
   }
 
-  public void InitCategories()
-  {
-    foreach (var category in patchCategoryKeys.Keys)
-    {
-      UpdatePatch(category, true);
-    }
-  }
-
 
 #if DEBUG
-  static void BeforeHotReload()
-  {
-    foreach (var category in patchCategoryKeys.Keys)
-    {
-      UpdatePatch(category, false);
-    }
-  }
+  protected static void BeforeHotReload() =>
+    harmony.UnpatchAll(HarmonyId);
 
-  static void OnHotReload(ResoniteMod modInstance)
-  {
-    foreach (var category in patchCategoryKeys.Keys)
-    {
-      UpdatePatch(category, true);
-    }
-  }
+  protected static void OnHotReload(ResoniteMod modInstance) =>
+    PatchCategories();
 #endif
 
-  private static void UpdatePatch(string category, bool enabled)
+  protected static void PatchCategories()
+  {
+    foreach (var (category, key) in patchCategoryKeys)
+    {
+      if (Config?.GetValue(key) ?? true) // enable if fail?
+      {
+        harmony.PatchCategory(ModAssembly, category);
+      }
+    }
+  }
+
+  protected static void UpdatePatch(string category, bool enabled)
   {
     try
     {
@@ -137,12 +103,12 @@ public class ResoniteBreeTweaksMod : ResoniteMod
       if (enabled)
       {
         DebugFunc(() => $"Patching {category}...");
-        harmony.PatchCategory(category.ToString());
+        harmony.PatchCategory(category);
       }
       else
       {
         DebugFunc(() => $"Unpatching {category}...");
-        harmony.UnpatchCategory(category.ToString());
+        harmony.UnpatchCategory(category);
       }
     }
     catch (Exception e)

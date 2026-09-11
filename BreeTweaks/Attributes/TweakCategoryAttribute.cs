@@ -1,16 +1,10 @@
-using System;
+using HarmonyLib;
 
 namespace BreeTweaks.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-internal sealed class TweakCategoryAttribute : Attribute
+internal sealed class TweakCategory(string name, string description, bool defaultValue = true) : HarmonyPatchCategory(category: name)
 {
-  public string Description { get; }
-  public bool DefaultValue { get; }
-
-  public TweakCategoryAttribute(string description, bool defaultValue = true)
-  {
-    Description = description;
-    DefaultValue = defaultValue;
-  }
+  public readonly string Description = description;
+  public readonly bool DefaultValue = defaultValue;
 }

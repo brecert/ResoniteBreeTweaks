@@ -9,9 +9,8 @@ using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 
-// Use Global Distance for Earmuff Mode
-[HarmonyPatchCategory("Earmuff Global Distance"), TweakCategory("Modified earmuff mode to use the global distance space, rather than scaling the distance by the local scale.")]
 [HarmonyPatch(typeof(AvatarAudioOutputManager), "OnCommonUpdate")]
+[TweakCategory("Earmuff Global Distance", "Modifies earmuff mode to use the global distance space, rather than scaling the distance by the local scale.", defaultValue: false)]
 internal static class AvatarAudioOutputManager_OnCommonUpdate_Patch
 {
   // [AutoRegisterConfigKey]

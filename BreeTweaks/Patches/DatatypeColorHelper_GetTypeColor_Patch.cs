@@ -8,9 +8,8 @@ using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 
-// Use Global Distance for Earmuff Mode
-[HarmonyPatchCategory("Dummy Type Color"), TweakCategory("Modifies the Type color of dummy to give it a custom one that's more visually fitting.")]
 [HarmonyPatch(typeof(DatatypeColorHelper), "GetTypeColor")]
+[TweakCategory("Dummy Type Color", "Modifies the Type color of dummy to give it a custom one that's more visually fitting.")]
 internal static class DatatypeColorHelper_GetTypeColor_Patch
 {
   internal static bool Prefix(Type type, ref colorX __result)

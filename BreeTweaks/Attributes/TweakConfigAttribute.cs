@@ -1,5 +1,3 @@
-using System;
-
 namespace BreeTweaks.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

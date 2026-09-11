@@ -10,7 +10,7 @@ using HarmonyLib;
 using Renderite.Shared;
 
 [HarmonyPatch(typeof(CubemapCreator), "OnAttach")]
-[HarmonyPatchCategory("Live Cubemap Previews"), TweakCategory("Displays a live preview of what the cubemap will look like, updating every time a change is made.")]
+[TweakCategory("Live Cubemap Previews", "Displays a live preview of what the cubemap will look like, updating every time a change is made.")]
 class Cubemap_Preview_Patch
 {
   internal static void Postfix(CubemapCreator __instance)
