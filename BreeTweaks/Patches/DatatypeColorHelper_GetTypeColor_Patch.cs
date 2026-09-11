@@ -1,8 +1,12 @@
-using BreeTweaks.Attributes;
-using HarmonyLib;
-using FrooxEngine.ProtoFlux;
 using System;
+
+using BreeTweaks.Attributes;
+
 using Elements.Core;
+
+using FrooxEngine.ProtoFlux;
+
+using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 

@@ -1,11 +1,16 @@
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+
 using BreeTweaks.Attributes;
-using FrooxEngine;
-using HarmonyLib;
+
 using Elements.Assets;
 using Elements.Core;
-using System;
-using System.Threading.Tasks;
+
+using FrooxEngine;
+
+using HarmonyLib;
+
 using Renderite.Shared;
 
 [HarmonyPatch(typeof(CubemapCreator), "OnAttach")]

@@ -1,10 +1,13 @@
-using FrooxEngine;
-using BreeTweaks.Attributes;
-using HarmonyLib;
 using System;
-using FrooxEngine.UIX;
 using System.Runtime.CompilerServices;
+
+using BreeTweaks.Attributes;
+
+using FrooxEngine;
 using FrooxEngine.FinalIK;
+using FrooxEngine.UIX;
+
+using HarmonyLib;
 
 namespace BreeTweaks.Patches;
 
