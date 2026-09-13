@@ -12,6 +12,8 @@ namespace BreeTweaks;
 
 using System.Collections.Generic;
 
+using BreeTweaks.Patches;
+
 
 #if DEBUG
 using ResoniteHotReloadLib;
@@ -30,10 +32,18 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
   private static readonly Harmony harmony = new(HarmonyId);
 
-  private static ModConfiguration? Config;
+  [AutoRegisterConfigKey]
+  internal static ModConfigurationKey<bool> IsProtoFluxEnabledKey = new("IsProtoFluxEnabled", "Is ProtoFlux Enabled?", computeDefault: () => true);
+  public static bool IsProtoFluxEnabled => IsProtoFluxEnabledKey.Value;
 
-  private static readonly Dictionary<string, ModConfigurationKey<bool>> patchCategoryKeys = [];
-  // private static readonly Dictionary<ModConfigurationKey, FieldInfo> patchOptionKeys = [];
+  [AutoRegisterConfigKey]
+  internal static ModConfigurationKey<bool> AreCamerasEnabledKey = new("AreCamerasEnabled", "Are Cameras Enabled?", computeDefault: () => true);
+  public static bool AreCamerasEnabled => AreCamerasEnabledKey.Value;
+
+  internal static ModConfiguration? Config;
+
+  private static readonly Dictionary<string, ModConfigurationKey<bool>> PatchCategoryKeys;
+  // private static readonly HashSet<ModConfigurationKey> NestedAutoKeys;
 
   static ResoniteBreeTweaksMod()
   {
@@ -41,21 +51,23 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
     var types = AccessTools.GetTypesFromAssembly(ModAssembly);
 
-    var categoryKeys = types
+    PatchCategoryKeys = types
       .Select(t => t.GetCustomAttribute<TweakCategory>())
       .OfType<TweakCategory>()
-      .Select(t => new ModConfigurationKey<bool>(t.info.category, t.Description, () => t.DefaultValue));
+      .Select(t => new ModConfigurationKey<bool>(t.info.category, t.Description, () => t.DefaultValue, internalAccessOnly: t.Hidden))
+      .ToDictionary(k => k.Name);
 
-    foreach (var key in categoryKeys)
-    {
-      DebugFunc(() => $"Registering patch category {key.Name}...");
-      patchCategoryKeys[key.Name] = key;
-    }
+    // NestedAutoKeys = types
+    //   .SelectMany(t => t.GetFields())
+    //   .Where(f => Attribute.IsDefined(f, typeof(AutoRegisterConfigKeyAttribute)))
+    //   .Select(f => f.GetValue(null))
+    //   .Cast<ModConfigurationKey>()
+    //   .ToHashSet();
   }
 
   public override void DefineConfiguration(ModConfigurationDefinitionBuilder builder)
   {
-    foreach (var key in patchCategoryKeys.Values)
+    foreach (var key in PatchCategoryKeys.Values)
     {
       DebugFunc(() => $"Adding configuration key for {key.Name}...");
       builder.Key(key);
@@ -67,6 +79,7 @@ public class ResoniteBreeTweaksMod : ResoniteMod
   {
     Config = GetConfiguration()!; // todo: tired, fix
     Config.OnThisConfigurationChanged += OnConfigChanged;
+    AreCamerasEnabledKey.OnChanged += UpdateCameras;
 
     PatchCategories();
 
@@ -75,18 +88,24 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 #endif
   }
 
-
 #if DEBUG
-  protected static void BeforeHotReload() =>
+  protected static void BeforeHotReload()
+  {
+    AreCamerasEnabledKey.OnChanged -= UpdateCameras;
     harmony.UnpatchAll(HarmonyId);
+  }
 
-  protected static void OnHotReload(ResoniteMod modInstance) =>
+  protected static void OnHotReload(ResoniteMod modInstance)
+  {
     PatchCategories();
+    AreCamerasEnabledKey.OnChanged += UpdateCameras;
+    UpdateCameras(null);
+  }
 #endif
 
   protected static void PatchCategories()
   {
-    foreach (var (category, key) in patchCategoryKeys)
+    foreach (var (category, key) in PatchCategoryKeys)
     {
       if (Config?.GetValue(key) ?? true) // enable if fail?
       {
@@ -99,7 +118,6 @@ public class ResoniteBreeTweaksMod : ResoniteMod
   {
     try
     {
-
       if (enabled)
       {
         DebugFunc(() => $"Patching {category}...");
@@ -119,10 +137,11 @@ public class ResoniteBreeTweaksMod : ResoniteMod
 
   private static void OnConfigChanged(ConfigurationChangedEvent change)
   {
-    if (change.Key is ModConfigurationKey<bool> key)
+    if (change.Key is ModConfigurationKey<bool> key && PatchCategoryKeys.ContainsKey(key.Name))
     {
       UpdatePatch(key.Name, change.Config.GetValue(key));
     }
   }
 
+  static void UpdateCameras(object? _) => CamerasEnabledPatch.UpdateCameras();
 }
