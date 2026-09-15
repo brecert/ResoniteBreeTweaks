@@ -40,6 +40,11 @@ public class ResoniteBreeTweaksMod : ResoniteMod
   internal static ModConfigurationKey<bool> AreCamerasEnabledKey = new("AreCamerasEnabled", "Are Cameras Enabled?", computeDefault: () => true);
   public static bool AreCamerasEnabled => AreCamerasEnabledKey.Value;
 
+  [AutoRegisterConfigKey]
+  internal static ModConfigurationKey<float> InspectorCullingDistanceKey = new("InspectorCullingDistance", "How far inspectors need to be before their contents are culled.", computeDefault: () => 5);
+  public static float InspectorCullingDistance => InspectorCullingDistanceKey.Value;
+
+
   internal static ModConfiguration? Config;
 
   private static readonly Dictionary<string, ModConfigurationKey<bool>> PatchCategoryKeys;
